@@ -1,0 +1,42 @@
+Percieved Effort
+================
+
+Inspired by [B Brewer et al (2006). Visual-Feedback Distortion in a Robotic Rehabilitation Environment]
+
+This environment involves two agents: an client and a physio. The client and physio share a common goal of trying to maximize the recovery of the client via exercise. In this instance the recovery of the client increases as they put in more effort, but is reduced if they overexert themselves.
+
+Each episode involve
+
+
+State Space
+~~~~~~~~~~~
+
+The state space for this problem is simply the proportion of energy the athlete has remaining. This is initially 1.0 and decreases as the athlete moves down to a minimum of 0.0 at which point the athlete is considered to be overexerted.
+
+
+Action Space
+~~~~~~~~~~~~
+
+**Athlete**: At each time step the athlete can choose to `move` or `stop`. The `move` action moves the athlete further at the cost of some energy, while the `stop` action ends the episode. The energy cost per step is stochastic.
+
+**Coach**: At each time step the coach can signal either `green` or `red`, or display `no signal`. Unlike the athletes actions these signals have no direct effect on the state of the system but they can be used to communicate with the athlete.
+
+
+Observation Space and function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Both the athlete and the coach recieve an observation of the athletes energy level, however these observations are noisy. The accuracy of each agents observation can be chosen but in general if we mimic a hypothetical real world athlete-coach scenario we might expect that the athlete would overestimate how much energy they have exerted since it requires mental effort on their part, while the coach would more accurately or under estimate exertion.
+
+The athlete additionally observes the signal of the coach.
+
+
+Transition
+~~~~~~~~~~
+
+Each time the athlete uses the `move` action they lose some random amount of energy. The distribution of energy loss can be chosen, but an example would be a normal distribution with mean=1.0 and stdev=1.0. If the athlete uses the `stop` action the episode terminates. Finally, if the athletes energy reaches 0 or less then the episode terminates.
+
+
+Reward
+~~~~~~
+
+For each `move` action performed the athlete and coach recieve a reward of 1. If the athlete performs the `stop` action the athlete and coach recieve a reward of 0. Lastly, if the energy level of the athlete goes to 0 or below then the athlete and coach recieve a large negative reward which can be chosen, e.g. -100 or -1000.

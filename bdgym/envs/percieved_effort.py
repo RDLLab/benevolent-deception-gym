@@ -35,31 +35,39 @@ class PercievedEffortEnv(gym.Env):
         'render.modes': ['human'],
     }
 
-    athlete = 0
-    coach = 1
+    ATHLETE = 0
+    COACH = 1
+
+    MIN_ENERGY = 0.0
+    MAX_ENERGY = 1.0
+    MIN_ENERGY_COST = 0.0001
+    OVEREXERTION_PENALTY = -100
+    MOVE_REWARD = 1
 
     def __init__(self):
         self.num_agents = 2
 
         self.action_space = {
-            self.athlete: spaces.Discrete(2),
-            self.coach: spaces.Discrete(3)
+            self.ATHLETE: spaces.Discrete(len(AthleteAction)),
+            self.COACH: spaces.Discrete(len(CoachSignal))
         }
 
         self.observation_space = {
-            self.athlete: spaces.Tuple((
-                spaces.Box(low=0.0, high=1.0, shape=()),
-                spaces.Discrete(3)
+            self.ATHLETE: spaces.Tuple((
+                spaces.Box(
+                    low=self.MIN_ENERGY, high=self.MAX_ENERGY, shape=()
+                ),
+                spaces.Discrete(len(CoachSignal))
             )),
-            self.coach: spaces.Box(low=0.0, high=1.0, shape=())
+            self.COACH: spaces.Box(
+                low=self.MIN_ENERGY, high=self.MAX_ENERGY, shape=()
+            )
         }
 
-        self.state = 1.0
+        self.state = self.MAX_ENERGY
         self.energy_cost_dist = lambda: np.random.normal(0.05, 0.025)
         self.athlete_obs_noise = lambda: np.random.normal(-0.1, 0.03)
         self.coach_obs_noise = lambda: np.random.normal(0.0, 0.02)
-        self.overexertion_penalty = -100.0
-        self.move_reward = 1.0
 
     def reset(self):
         """Reset the environment
@@ -69,13 +77,13 @@ class PercievedEffortEnv(gym.Env):
         List
             initial observation for each agent
         """
-        self.state = 1.0
+        self.state = self.MAX_ENERGY
         obs = [
             (
-                min(1.0, self.state + self.athlete_obs_noise()),
+                min(self.MAX_ENERGY, self.state + self.athlete_obs_noise()),
                 CoachSignal.NOSIGNAL
             ),
-            min(1.0, self.state + self.coach_obs_noise())
+            min(self.MAX_ENERGY, self.state + self.coach_obs_noise())
         ]
         return obs
 
@@ -84,12 +92,12 @@ class PercievedEffortEnv(gym.Env):
 
         Parameters
         ----------
-        action_n : List[Action]
+        action_n : List[int, int]
             action for each agent
 
         Returns
         -------
-        List[]
+        List[(float, int), float]
             observation for each agent
         List[float]
             reward for each agent
@@ -100,13 +108,13 @@ class PercievedEffortEnv(gym.Env):
         """
         assert len(action_n) == self.num_agents
 
-        if action_n[self.athlete] == AthleteAction.MOVE:
-            self.state -= max(0.0001, self.energy_cost_dist())
+        if action_n[self.ATHLETE] == AthleteAction.MOVE:
+            self.state -= max(self.MIN_ENERGY_COST, self.energy_cost_dist())
 
         obs_n = self._get_obs(action_n)
         rew_n = self._get_reward(action_n)
         done_n = self._get_done(action_n)
-        info_n = [{}, {}]
+        info_n = self._get_info()
 
         return obs_n, rew_n, done_n, info_n
 
@@ -114,30 +122,40 @@ class PercievedEffortEnv(gym.Env):
         """Get observation for each agent after step"""
         obs = [
             (
-                max(0.0, min(1.0, self.state + self.athlete_obs_noise())),
-                CoachSignal(action_n[self.coach])
+                max(
+                    self.MIN_ENERGY,
+                    min(self.MAX_ENERGY, self.state + self.athlete_obs_noise())
+                ),
+                CoachSignal(action_n[self.COACH])
             ),
-            max(0.0, min(1.0, self.state + self.coach_obs_noise()))
+            max(
+                self.MIN_ENERGY,
+                min(self.MAX_ENERGY, self.state + self.coach_obs_noise())
+            )
         ]
         return obs
 
     def _get_reward(self, action_n):
         """Get reward for each agent after step """
-        if self.state <= 0.0:
-            reward = self.overexertion_penalty
-        elif action_n[self.athlete] == AthleteAction.MOVE:
-            reward = self.move_reward
+        if self.state <= self.MIN_ENERGY:
+            reward = self.OVEREXERTION_PENALTY
+        elif action_n[self.ATHLETE] == AthleteAction.MOVE:
+            reward = self.MOVE_REWARD
         else:
             reward = 0.0
         return [reward] * self.num_agents
 
     def _get_done(self, action_n):
         """Get whether episode is finished or not """
-        if action_n[self.athlete] == AthleteAction.STOP:
+        if action_n[self.ATHLETE] == AthleteAction.STOP:
             done = True
         else:
-            done = self.state <= 0.0
+            done = self.state <= self.MIN_ENERGY
         return [done] * self.num_agents
+
+    def _get_info(self):
+        """Get aux information for current step """
+        return [{"state": self.state}, {"state": self.state}]
 
     def render(self, mode='human'):
         """Render the environment
