@@ -1,13 +1,12 @@
 """Fixed Athlete Policies """
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import numpy as np
 
-from bdgym.agents.base_policy import BasePolicy
 from bdgym.envs.exercise_assistant.action import AthleteAction
 
 
-class AthletePolicy(BasePolicy):
+class AthletePolicy(ABC):
     """Fixed Athlete Policy for Exercise Assistant Environment """
 
     @abstractmethod
