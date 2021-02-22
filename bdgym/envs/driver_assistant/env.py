@@ -240,13 +240,7 @@ class DriverAssistantEnv(HighwayEnv):
 
         :return: the initial assistant observation of the reset state
         """
-        # First, to set the controlled vehicle class depending on action space
-        self.define_spaces()
-        self.time = self.steps = 0
-        self.done = False
-        self._reset()
-        # Second, to link obs and actions to the vehicles once scene is created
-        self.define_spaces()
+        super().reset()
         self.next_agent = self.ASSISTANT_IDX
         self._last_reward = 0.0
         self._last_action = [

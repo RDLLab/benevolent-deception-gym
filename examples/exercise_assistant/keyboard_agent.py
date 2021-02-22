@@ -1,6 +1,6 @@
 """A keyboard agent for the Percieved Effort Environment """
 import bdgym.envs.utils as utils
-import bdgym.envs.exercise_assistant.athlete_policy as athlete_policy
+import bdgym.envs.exercise_assistant.policy as policy
 from bdgym.envs.exercise_assistant.observation import \
     assistant_obs_str, athlete_obs_str
 from bdgym.envs.exercise_assistant.action import \
@@ -13,8 +13,6 @@ import numpy as np
 
 
 LINE_BREAK = "-" * 60
-
-VALID_ATHLETE_POLICIES = ['', 'random', 'greedy', 'obedient']
 
 
 def display_init_obs(ea_obs=None, at_obs=None):
@@ -194,16 +192,12 @@ def run_fixed_athlete_episode(env, args):
 
 def load_athlete_policy(args):
     """Initialize the athlete policy """
-    policy = args.fixed_athlete.lower()
-    if policy == 'random':
-        return athlete_policy.RandomAthletePolicy()
-    if policy == 'greedy':
-        return athlete_policy.GreedyAthletePolicy()
-    if policy == 'obedient':
-        return athlete_policy.ObedientAthletePolicy()
+    policy_name = args.fixed_athlete.lower()
+    if policy_name in policy.ATHLETE_POLICIES:
+        return policy.ATHLETE_POLICIES[policy_name]()
     raise ValueError(
         f"Invalid value for 'fixed_athlete' argument: '{args.fixed_athlete}'. "
-        f"Must be one of: {VALID_ATHLETE_POLICIES}"
+        f"Must be one of: {list(policy.ATHLETE_POLICIES)} or ''"
     )
 
 
@@ -214,10 +208,10 @@ def get_env(args):
             return DiscreteExerciseAssistantEnv()
         return ExerciseAssistantEnv()
 
-    policy = load_athlete_policy(args)
+    athlete_policy = load_athlete_policy(args)
     if args.discrete:
-        return DiscreteFixedAthleteExerciseAssistantEnv(policy)
-    return FixedAthleteExerciseAssistantEnv(policy)
+        return DiscreteFixedAthleteExerciseAssistantEnv(athlete_policy)
+    return FixedAthleteExerciseAssistantEnv(athlete_policy)
 
 
 def main(args):
@@ -234,7 +228,11 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--discrete", action='store_true',
                         help="use discrete actions")
     parser.add_argument("-fa", "--fixed_athlete", type=str, default='',
-                        help="use fixed athlete policy (default=''=None)")
+                        help=(
+                            "use fixed athlete policy from: "
+                            f"{list(policy.ATHLETE_POLICIES)}. Or use '' for "
+                            "full multi-agent env (default='')"
+                        ))
     parser.add_argument("-v", "--verbose", type=int, default=1,
                         help="Verbosity level (default=1)")
     parser.add_argument("-r", "--render", action="store_true",

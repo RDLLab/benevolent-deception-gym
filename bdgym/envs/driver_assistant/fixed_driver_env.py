@@ -23,7 +23,7 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
         super().__init__(config)
         driver_config = self.config.get("driver_policy", {})
         self.driver_policy = GuidedIDMDriverPolicy.create_from(
-            self.controlled_vehicles[0], **driver_config
+            self.vehicle, **driver_config
         )
 
     def define_spaces(self) -> None:
@@ -80,9 +80,10 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
 
         return obs, reward, terminal, info
 
-    def _reset(self) -> None:
-        super()._reset()
+    def reset(self) -> None:
+        obs = super().reset()
         driver_config = self.config.get("driver_policy", {})
         self.driver_policy = GuidedIDMDriverPolicy.create_from(
-            self.controlled_vehicles[0], **driver_config
+            self.vehicle, **driver_config
         )
+        return obs

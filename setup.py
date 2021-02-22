@@ -12,6 +12,11 @@ extras = {
 
 extras['all'] = [item for group in extras.values() for item in group]
 
+HIGHWAY_ENV_GIT = (
+    'highway-env @ '
+    'git+https://github.com/eleurent/highway-env@v1.0#egg=highway-env'
+)
+
 setup(
     name='bdgym',
     version='0.0.1',
@@ -30,7 +35,10 @@ setup(
         if package.startswith('bdgym')
     ],
     install_requires=[
-        'gym>=0.17',
+        'gym>=0.18',
+        'numpy>=1.19',
+        'pygame>=2.0',
+        HIGHWAY_ENV_GIT
     ],
     extras_require=extras,
     python_requires='>=3.7',

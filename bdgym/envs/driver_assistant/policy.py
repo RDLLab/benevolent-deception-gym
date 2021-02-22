@@ -5,11 +5,11 @@ import numpy as np
 
 from highway_env.utils import not_zero, do_every
 from highway_env.types import Vector
-from highway_env.road.road import Road, LaneIndex
 from highway_env.road.lane import AbstractLane
 from highway_env.envs.common.action import Action
 from highway_env.vehicle.kinematics import Vehicle
 from highway_env.vehicle.behavior import IDMVehicle
+from highway_env.road.road import Road, LaneIndex, Route
 
 import bdgym.envs.utils as utils
 
@@ -26,7 +26,7 @@ class IDMDriverPolicy(IDMVehicle):
     """A driver Policy that acts similar to IDMVehicle.
 
     Key difference is that it's decisions are based on the observations
-    of it's own position and velocitu that it recieves from the assistant and
+    of it's own position and velocity that it recieves from the assistant and
     the noisy observations it recieves about the other nearby vehicles
     """
 
@@ -35,6 +35,13 @@ class IDMDriverPolicy(IDMVehicle):
     def __init__(self,
                  road: Road,
                  position: Vector,
+                 heading: float = 0,
+                 speed: float = 0,
+                 target_lane_index: int = None,
+                 target_speed: float = None,
+                 route: Route = None,
+                 enable_lane_change: bool = True,
+                 timer: float = None,
                  acc_max: float = None,
                  comfort_acc_max: float = None,
                  comfort_acc_min: float = None,
@@ -46,7 +53,17 @@ class IDMDriverPolicy(IDMVehicle):
                  lane_change_max_braking_imposed: float = None,
                  lane_change_delay: float = None,
                  **kwargs):
-        super().__init__(road, position, **kwargs)
+        super().__init__(
+            road,
+            position,
+            heading=heading,
+            speed=speed,
+            target_lane_index=target_lane_index,
+            target_speed=target_speed,
+            route=route,
+            enable_lane_change=enable_lane_change,
+            timer=timer
+        )
 
         self.acc_max = self.ACC_MAX if acc_max is None else acc_max
         self.comfort_acc_max = self.COMFORT_ACC_MAX \
@@ -68,10 +85,8 @@ class IDMDriverPolicy(IDMVehicle):
         self.lane_change_delay = self.LANE_CHANGE_DELAY \
             if lane_change_delay is None else lane_change_delay
 
-        self.timer = (
-            self.timer
-            or (np.sum(self.position)*np.pi) % self.lane_change_delay
-        )
+        if timer is None:
+            self.timer = (np.sum(self.position)*np.pi) % self.lane_change_delay
 
     @classmethod
     def create_from(cls, vehicle: Vehicle, **kwargs) -> "IDMDriverPolicy":
@@ -123,10 +138,10 @@ class IDMDriverPolicy(IDMVehicle):
         self.speed, self.heading = self._get_speed_and_heading(vx, vy)
         if self.road:
             self.lane_index = self.road.network.get_closest_lane_index(
-                self.position, self.heading
+                self.position
             )
             self.lane = self.road.network.get_lane(self.lane_index)
-            self.road.update_nearest_neighbours()
+            # self.road.update_nearest_neighbours()
 
         self.timer += dt
 

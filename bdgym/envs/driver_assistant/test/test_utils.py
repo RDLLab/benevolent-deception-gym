@@ -176,7 +176,7 @@ def init_assistant(args: Union[Namespace, RunArgs],
     kwargs["normalize"] = True
     kwargs["action_ranges"] = \
         env.config["action"]["assistant"]["features_range"]
-    return assistant_class.create_from(env.controlled_vehicles[0], **kwargs)
+    return assistant_class.create_from(env.vehicle, **kwargs)
 
 
 def run_episode(args: Union[Namespace, RunArgs],

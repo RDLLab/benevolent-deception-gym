@@ -9,6 +9,7 @@ from highway_env.envs.common.abstract import Observation
 from highway_env.envs.common.action import \
     ContinuousAction, Action, action_factory, ActionType
 
+
 from bdgym.envs.driver_assistant.policy import DriverAssistantVehicle
 
 if TYPE_CHECKING:
@@ -30,9 +31,8 @@ class DriverAssistantAction(ActionType):
 
     def __init__(self,
                  env: 'DriverAssistantEnv',
-                 action_config: dict,
-                 **config) -> None:
-        super().__init__(env, **config)
+                 action_config: dict) -> None:
+        self.env = env
         self.action_config = action_config
         self.driver_action_type = ContinuousAction(
             env, **action_config.get("driver", {})

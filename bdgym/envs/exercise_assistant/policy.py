@@ -55,3 +55,10 @@ class ObedientAthletePolicy(AthletePolicy):
         if obs[3] >= 0.5:
             return AthleteAction.END_SET
         return AthleteAction.PERFORM_REP
+
+
+ATHLETE_POLICIES = {
+    'greedy': GreedyAthletePolicy,
+    'random': RandomAthletePolicy,
+    'obedient': ObedientAthletePolicy
+}

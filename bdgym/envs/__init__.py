@@ -1,5 +1,5 @@
-from .percieved_effort import PercievedEffortEnv
-from .nearly_there import NearlyThereEnv
+from .driver_assistant import \
+    DriverAssistantEnv, FixedDriverDriverAssistantEnv
 from .exercise_assistant import \
     ExerciseAssistantEnv, \
     DiscreteExerciseAssistantEnv, \
