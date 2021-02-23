@@ -15,16 +15,16 @@ class FixedAthleteExerciseAssistantEnv(ExerciseAssistantEnv):
     def __init__(self, athlete_policy: AthletePolicy):
         super().__init__()
         self.athlete_policy = athlete_policy
-
-    def reset(self) -> np.ndarray:
-        assistant_obs, _ = super().reset()
-        return assistant_obs
+        self.action_space = self.action_space[self.ASSISTANT_IDX]
+        self.observation_space = self.observation_space[self.ASSISTANT_IDX]
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, Dict]:
         athlete_obs, _, _, _ = super().step(action)
-
         athlete_action = self.athlete_policy.get_action(athlete_obs)
         return super().step(athlete_action)
+
+    def discrete_assistant(self) -> bool:
+        return False
 
 
 class DiscreteFixedAthleteExerciseAssistantEnv(DiscreteExerciseAssistantEnv):
@@ -33,13 +33,13 @@ class DiscreteFixedAthleteExerciseAssistantEnv(DiscreteExerciseAssistantEnv):
     def __init__(self, athlete_policy: AthletePolicy):
         super().__init__()
         self.athlete_policy = athlete_policy
-
-    def reset(self) -> np.ndarray:
-        assistant_obs, _ = super().reset()
-        return assistant_obs
+        self.action_space = self.action_space[self.ASSISTANT_IDX]
+        self.observation_space = self.observation_space[self.ASSISTANT_IDX]
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict]:
         athlete_obs, _, _, _ = super().step(action)
-
         athlete_action = self.athlete_policy.get_action(athlete_obs)
         return super().step(athlete_action)
+
+    def discrete_assistant(self) -> bool:
+        return True

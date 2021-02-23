@@ -132,7 +132,7 @@ class ExerciseAssistantEnv(gym.Env):
     """
 
     metadata = {
-        'render.modes': ['human']
+        'render.modes': ['human', 'asci']
     }
 
     MAX_SETS = 5
@@ -194,15 +194,13 @@ class ExerciseAssistantEnv(gym.Env):
         # Rendering
         self.viewer = None
 
-    def reset(self) -> Tuple[np.ndarray, np.ndarray]:
+    def reset(self) -> np.ndarray:
         """Reset the environment
 
         Returns
         -------
         np.ndarray
-            initial observation for each exercise assistant
-        np.ndarray
-            initial observation for athlete
+            initial observation for the assistant
         """
         init_energy = np.random.uniform(*self.INIT_ENERGY_RANGE)
         self.state = [init_energy, 0]
@@ -216,7 +214,7 @@ class ExerciseAssistantEnv(gym.Env):
         self._last_action = [None, None]
         self._last_reward = 0.0
         self.next_agent = self.ASSISTANT_IDX
-        return assistant_obs, athlete_obs
+        return assistant_obs
 
     def step(self,
              action: Union[np.ndarray, int]
@@ -266,7 +264,7 @@ class ExerciseAssistantEnv(gym.Env):
         self._last_reward = reward
         return obs, reward, done, info
 
-    def render(self, mode: str = 'human'):
+    def render(self, mode: str = 'asci'):
         """Render the environment
 
         Parameters
@@ -276,15 +274,16 @@ class ExerciseAssistantEnv(gym.Env):
         """
         assert mode in self.metadata['render.modes']
 
-        if self.viewer is None:
+        if self.viewer is None and mode == 'human':
             self.viewer = EnvViewer(self)
 
-        self.viewer.display()
-
-        print(
-            f"State: Athlete-Energy={self.state[0]:.4f} "
-            f"Sets-Complete={self.state[1]:.4f}"
-        )
+        if mode == 'human':
+            self.viewer.display()
+        elif mode == 'asci':
+            print(
+                f"State: Athlete-Energy={self.state[0]:.4f} "
+                f"Sets-Complete={self.state[1]:.4f}"
+            )
 
     def is_terminal(self, state: Tuple[float, int] = None) -> bool:
         """Check if state is terminal
@@ -298,9 +297,27 @@ class ExerciseAssistantEnv(gym.Env):
         Returns
         -------
         bool
-            True if current state is terminal, otherwise False
+            True if state is terminal, otherwise False
         """
         return self._get_done(state)
+
+    def athlete_overexerted(self, state: Tuple[float, int] = None) -> bool:
+        """Check if athlete is overexerted in state
+
+        Parameters
+        ----------
+        state : Tuple[float, int], optional
+            the state to check. If None will check current state defined in
+            self.state
+
+        Returns
+        -------
+        bool
+            True if athlete is overexerted in state, otherwise False
+        """
+        if state is None:
+            state = self.state
+        return state[0] <= self.MIN_ENERGY
 
     def is_athletes_turn(self) -> bool:
         """Return if its the athletes turn or not

@@ -38,6 +38,7 @@ setup(
         'gym>=0.18',
         'numpy>=1.19',
         'pygame>=2.0',
+        'scipy>=1.6',
         HIGHWAY_ENV_GIT
     ],
     extras_require=extras,

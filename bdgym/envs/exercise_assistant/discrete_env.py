@@ -80,12 +80,12 @@ class DiscreteExerciseAssistantEnv(ExerciseAssistantEnv):
         )
         self._current_offset = 0.0
 
-    def reset(self) -> Tuple[np.ndarray, np.ndarray]:
-        assistant_obs, athlete_obs = super().reset()
+    def reset(self) -> np.ndarray:
+        assistant_obs = super().reset()
         self._current_offset = 0.0
         assistant_obs = self._convert_assistant_obs(assistant_obs)
         self._last_obs[self.ASSISTANT_IDX] = assistant_obs
-        return assistant_obs, athlete_obs
+        return assistant_obs
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict]:
         if self.next_agent == self.ASSISTANT_IDX:

@@ -5,6 +5,7 @@ Credit to: https://github.com/eleurent/highway-env
 from typing import Union, Tuple, List
 
 import numpy as np
+from scipy.stats import truncnorm
 
 Interval = Union[
     np.ndarray,
@@ -26,3 +27,16 @@ def lmap_array(v: np.ndarray, x: Interval, y: Interval) -> float:
 def np_array_str(arr: np.ndarray, precision: int = 3) -> str:
     """Get nicely readable string representation of numpy array """
     return np.array_str(arr, precision=precision, suppress_small=1)
+
+
+def get_truncated_normal(mean: float = 0.5,
+                         std: float = 0.25,
+                         low: float = 0,
+                         upper: float = 1):
+    """Get truncated normal distribution.
+
+    call the .rvs() method on the returned distribution to sample a value
+    """
+    return truncnorm(
+        (low - mean) / std, (upper - mean) / std, loc=mean, scale=std
+    )
