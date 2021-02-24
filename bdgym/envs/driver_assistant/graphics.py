@@ -31,8 +31,11 @@ from typing import TYPE_CHECKING, Tuple, List
 import numpy as np
 import pygame as pg
 
-from bdgym.envs.driver_assistant.action import \
-    AssistantContinuousAction, AssistantContinuousOffsetAction
+from bdgym.envs.driver_assistant.action import (
+    AssistantContinuousAction,
+    AssistantContinuousOffsetAction,
+    AssistantDiscreteActionSpace
+)
 
 from highway_env.road.graphics import WorldSurface
 from highway_env.envs.common.action import ActionType
@@ -40,6 +43,10 @@ from highway_env.envs.common.graphics import EnvViewer, EventHandler
 
 if TYPE_CHECKING:
     from bdgym.envs.driver_assistant.env import DriverAssistantEnv
+
+
+# TODO
+# Add better labels to Agent display
 
 
 class DriverAssistantEnvViewer(EnvViewer):
@@ -107,6 +114,27 @@ class AssistantActionDisplayer:
             parameters=list(AssistantContinuousAction.ASSISTANT_ACTION_INDICES)
         )
 
+    def _get_assistant_action_title(self):
+        assistant_action_type = self.env.action_type.assistant_action_type
+        if isinstance(assistant_action_type, AssistantContinuousAction):
+            return (
+                "Assistant Action (Driver observation & action recommendation)"
+            )
+        if isinstance(
+                assistant_action_type,
+                (AssistantContinuousOffsetAction, AssistantDiscreteActionSpace)
+        ):
+            return (
+                "Current Offsets applied to Driver observation & "
+                "recommendation"
+            )
+        raise ValueError(
+            "Unsupported Assistant Action Type for Assistant action display: "
+            f"{assistant_action_type}. Either use supported action type or "
+            "disable action display with the 'action_display' environment "
+            "configuration parameter"
+        )
+
     def _get_assistant_ego_obs(self) -> np.ndarray:
         raw_obs = self.env.last_assistant_obs[0]
         obs = []
@@ -116,22 +144,16 @@ class AssistantActionDisplayer:
         return np.array(obs)
 
     def _get_assistant_action(self) -> np.ndarray:
-        return self.env.last_assistant_action
-
-    def _get_driver_obs(self,
-                        assistant_obs: np.ndarray,
-                        assistant_action: np.ndarray) -> np.ndarray:
         assistant_action_type = self.env.action_type.assistant_action_type
         if isinstance(assistant_action_type, AssistantContinuousAction):
-            return assistant_action
-        if isinstance(
-                assistant_action_type, AssistantContinuousOffsetAction
-        ):
-            num_obs_features = len(self.assistant_obs_parameters)
-            assistant_signal = (
-                assistant_obs + assistant_action[:num_obs_features]
-            )
-            return np.concatenate([assistant_signal, assistant_action[4:]])
+            return assistant_action_type.last_action
+        if isinstance(assistant_action_type, AssistantContinuousOffsetAction):
+            return np.zeros(len(self.assistant_obs_parameters))
+        if isinstance(assistant_action_type, AssistantDiscreteActionSpace):
+            current_offset = assistant_action_type.current_offset
+            last_action = assistant_action_type.last_action
+            return np.concatenate([current_offset, last_action[4:]])
+
         raise ValueError(
             "Unsupported Assistant Action Type for Assistant action display: "
             f"{assistant_action_type}. Either use supported action type or "
@@ -139,13 +161,17 @@ class AssistantActionDisplayer:
             "configuration parameter"
         )
 
+    def _get_driver_obs(self) -> np.ndarray:
+        assistant_action_type = self.env.action_type.assistant_action_type
+        return assistant_action_type.last_action
+
     def __call__(self,
                  agent_surface: pg.Surface,
                  sim_surface: WorldSurface) -> None:
         """Draws the assistants last action on agent_surface """
         assistant_obs = self._get_assistant_ego_obs()
         assistant_action = self._get_assistant_action()
-        driver_obs = self._get_driver_obs(assistant_obs, assistant_action)
+        driver_obs = self._get_driver_obs()
 
         self.assistant_display.display(assistant_obs)
         self.assistant_action.display(assistant_action)
@@ -233,11 +259,6 @@ class DashboardDisplay:
 class AssistantEventHandler(EventHandler):
     """Event handler that includes assistant actions """
 
-    ACTION_DT = 0.05
-    """Action delta. The amount action offset is changed per
-    key press. This is a proportion of the max range.
-    """
-
     KEY_ACTION_MAP = {
         pg.K_RIGHT: ("acceleration", True),
         pg.K_LEFT: ("acceleration", False),
@@ -257,47 +278,46 @@ class AssistantEventHandler(EventHandler):
     decreases (False) the given action offset
     """
 
+    CONTROL_ACTIONS = [pg.K_RIGHT, pg.K_LEFT, pg.K_UP, pg.K_DOWN]
+    """Action Keys corresponding to 'acceleration' and 'steering' action """
+
     @classmethod
     def handle_event(cls,
                      action_type: ActionType,
                      event: pg.event.EventType) -> None:
         """ Overrides parent """
-        if isinstance(action_type, AssistantContinuousAction):
-            cls.handle_assistant_continuous_action_event(action_type, event)
+        assistant_action_type = action_type.assistant_action_type
+        if isinstance(assistant_action_type, AssistantDiscreteActionSpace):
+            cls.handle_assistant_discrete_action_event(
+                assistant_action_type, event
+            )
         else:
-            super().handle_event(action_type, event)
+            super().handle_event(assistant_action_type, event)
 
     @classmethod
-    def handle_assistant_continuous_action_event(
+    def handle_assistant_discrete_action_event(
             cls,
-            action_type: AssistantContinuousAction,
+            action_type: AssistantDiscreteActionSpace,
             event: pg.event.EventType) -> None:
         """Event handler for Assistant Continuous Actions """
-        action = action_type.last_assistant_action.copy()
-        a_idxs = AssistantContinuousAction.ASSISTANT_ACTION_INDICES
-        if event.type == pg.KEYDOWN and event.key in cls.KEY_ACTION_MAP:
-            action_key, increase = cls.KEY_ACTION_MAP[event.key]
-            action_idx = a_idxs[action_key]
-            action[action_idx] += cls.action_dt(
-                action[action_idx], increase
-            )
-        elif (
-                event.type == pg.KEYUP
-                and event.key in [pg.K_UP, pg.K_DOWN]
+        if (
+                event.type not in [pg.KEYDOWN, pg.KEYUP]
+                or event.key not in cls.KEY_ACTION_MAP
         ):
-            # Reset steering to 0 upon key release
-            action_key, _ = cls.KEY_ACTION_MAP[event.key]
-            action_idx = a_idxs[action_key]
-            action[action_idx] = 0.0
-        action_type.act(action)
+            return
 
-    @classmethod
-    def action_dt(cls,
-                  old_action: float,
-                  increase: bool,
-                  action_min: float = -1.0,
-                  action_max: float = 1.0) -> float:
-        """Get action offset step size """
-        if increase:
-            return min(abs(action_max - old_action), cls.ACTION_DT)
-        return -min(abs(old_action - action_min), cls.ACTION_DT)
+        action = np.full(
+            action_type.ASSISTANT_DISCRETE_ACTION_SPACE_SIZE,
+            action_type.NOOP,
+            dtype=np.float32
+        )
+        a_key, increase = cls.KEY_ACTION_MAP[event.key]
+        a_idx = action_type.ASSISTANT_DISCRETE_ACTION_INDICES[a_key]
+        if event.type == pg.KEYDOWN:
+            if increase:
+                action[a_idx] = action_type.UP
+            else:
+                action[a_idx] = action_type.DOWN
+        elif event.type == pg.KEYUP and event.key in cls.CONTROL_ACTIONS:
+            action[a_idx] = action_type.NOOP
+        action_type.act(action)
