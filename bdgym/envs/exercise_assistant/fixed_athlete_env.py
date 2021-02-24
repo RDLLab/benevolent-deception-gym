@@ -26,6 +26,10 @@ class FixedAthleteExerciseAssistantEnv(ExerciseAssistantEnv):
     def discrete_assistant(self) -> bool:
         return False
 
+    def reset(self) -> np.ndarray:
+        self.athlete_policy.reset()
+        return super().reset()
+
 
 class DiscreteFixedAthleteExerciseAssistantEnv(DiscreteExerciseAssistantEnv):
     """ The Discrete Exercise Assistant Env with Fixed Athlete Policy """
@@ -43,3 +47,7 @@ class DiscreteFixedAthleteExerciseAssistantEnv(DiscreteExerciseAssistantEnv):
 
     def discrete_assistant(self) -> bool:
         return True
+
+    def reset(self) -> np.ndarray:
+        self.athlete_policy.reset()
+        return super().reset()

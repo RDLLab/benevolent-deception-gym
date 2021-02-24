@@ -5,16 +5,15 @@ import multiprocessing as mp
 
 import bdgym.scripts.exercise_assistant.utils as utils
 
-
-FILENAME = osp.splitext(__file__)[0]
-
 # (Assistant, Athlete) Fixed Policy pairs
 # Note when athlete is 'random' the assistant policy does nothing
 POLICY_PAIRS = [
     ('discrete_random', 'random'),
-    ('discrete_random', 'weighted')
+    ('discrete_random', 'weighted'),
+    ('discrete_random', 'random_weighted')
 ]
 # Note 0.0 = 'obedient' and 1.0 = 'greedy'
+PERCEPT_INFLUENCES = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
 INDEPENDENCES = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
 NUM_EPISODES = 100
 SEED = 0
@@ -38,16 +37,21 @@ def create_run_args() -> List[utils.RunArgs]:
             "manual": MANUAL,
             "discrete": DISCRETE
         }
-        if policy_pair[1] == 'random':
+        if policy_pair[1] in ('random', 'random_weighted'):
             independences_list = [1.0]
+            pi_list = [0.0]
         else:
             independences_list = INDEPENDENCES
+            pi_list = PERCEPT_INFLUENCES
 
         for independence in independences_list:
-            run_args = utils.RunArgs(
-                independence=independence, **run_args_kwargs
-            )
-            all_run_args.append(run_args)
+            for perception_influence in pi_list:
+                run_args = utils.RunArgs(
+                    independence=independence,
+                    perception_influence=perception_influence,
+                    **run_args_kwargs
+                )
+                all_run_args.append(run_args)
     return all_run_args
 
 
@@ -58,10 +62,12 @@ def run_performance_test():
 
     print(f"Number of runs = {len(all_run_args)}")
 
+    filename = osp.splitext(__file__)[0]
+
     with mp.Pool(utils.NUM_CPUS) as pool:
         all_results = pool.map(utils.run, all_run_args)
 
-    utils.save_results(all_results, FILENAME, True)
+    utils.save_results(all_results, filename, True)
 
 
 if __name__ == "__main__":

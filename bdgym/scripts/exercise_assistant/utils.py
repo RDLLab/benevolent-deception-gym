@@ -30,6 +30,7 @@ Result = namedtuple(
         "assistant",
         "athlete",
         "independence",
+        "perception_influence",
         "episodes",
         "seed",
         "return_mean",
@@ -47,6 +48,7 @@ RunArgs = namedtuple(
     "RunArgs",
     [
         "independence",
+        "perception_influence",
         "fixed_athlete_policy",
         "fixed_assistant_policy",
         "num_episodes",
@@ -80,6 +82,9 @@ def argument_parser() -> ArgumentParser:
     parser = ArgumentParser()
     parser.add_argument("-i", "--independence", type=float, default=0.0,
                         help="athlete independence (default=0.0)")
+    parser.add_argument("-pi", "--perception_influence",
+                        type=float, default=0.5,
+                        help="athlete perception influence (default=0.5)")
     parser.add_argument("-fatp", "--fixed_athlete_policy", type=str,
                         default='',
                         help=(
@@ -129,7 +134,10 @@ def init_athlete_policy(args: Union[Namespace, RunArgs]
     athlete_policy_cls = policy.ATHLETE_POLICIES[args.fixed_athlete_policy]
 
     if athlete_policy_cls == policy.WeightedAthletePolicy:
-        return athlete_policy_cls(independence=args.independence)
+        return athlete_policy_cls(
+            perception_influence=args.perception_influence,
+            independence=args.independence
+        )
     return athlete_policy_cls()
 
 
@@ -336,6 +344,7 @@ def run(args: Union[Namespace, RunArgs]) -> Result:
         assistant=args.fixed_assistant_policy,
         athlete=args.fixed_athlete_policy,
         independence=args.independence,
+        perception_influence=args.perception_influence,
         episodes=args.num_episodes,
         seed=args.seed,
         return_mean=np.mean(ep_returns),
@@ -365,7 +374,7 @@ def save_results(all_results: List[Result],
 
     print(f"\nSaving results to: {full_filename}")
 
-    with open(filename, "w") as fout:
+    with open(full_filename, "w") as fout:
         headers = all_results[0]._fields
         fout.write("\t".join(headers) + "\n")
         for result in all_results:

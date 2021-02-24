@@ -76,7 +76,7 @@ class WeightedAthletePolicy(AthletePolicy):
     Specifically,
     1. the athlete's observed energy is a weighted sum of the athletes
        percieved energy and the assistants communicated energy, weighted by the
-       independence parameter
+       perception influence parameter
     2. the athletes action choice is then to perform a repetition if the
        observed energy >= the threshold parameter
     3. Finally, the action performed is based the weighted sum of the athletes
@@ -85,17 +85,38 @@ class WeightedAthletePolicy(AthletePolicy):
        will END_SET, otherwise athlete will PERFORM_REP.
 
     Note if independence == 1.0, then the policy == GreedyAthletePolicy, and
-    if independence == 0.0, then the policy == ObedientAthletePolicy
+    if independence == 0.0, then the policy == ObedientAthletePolicy.
+
+    The perception_influence parameter basically controls how much the provided
+    assistant signal of the athletes energy affects the athletes own perception
+    about their energy level.
+
+    - A value of 0.0 means the athlete energy level observation will be solely
+      their percieved energy level (i.e. their noisy internal observation of
+      their energy level).
+    - A value of 1.0 means the athlete energy level observation will be solely
+      the level provided by the assistant.
+    - Values between 0.0 and 1.0 are a weighted linear combination of the two
+      sources: the athletes percieved energy level and the assistants reading.
+
+    In this way, depending on the value of the perception_influence parameter
+    the Assistant can influence the action of the Athlete using the energy
+    level reading it provides.
     """
 
     def __init__(self,
                  threshold: float = 0.1,
+                 perception_influence: float = 0.5,
                  independence: float = 0.5):
         self.threshold = threshold
+        self.perception_influence = perception_influence
         self.independence = independence
 
     def get_action(self, obs: np.ndarray) -> AthleteAction:
-        energy_obs = self.independence*obs[0] + (1-self.independence)*obs[2]
+        energy_obs = (
+            (1-self.perception_influence)*obs[0]
+            + self.perception_influence*obs[2]
+        )
         if energy_obs >= self.threshold:
             athlete_choice = AthleteAction.PERFORM_REP
         else:
@@ -114,20 +135,30 @@ class RandomWeightedAthletePolicy(WeightedAthletePolicy):
     """A WeightedAthletePolicy but where independence changes over time.
 
     Specifically, each time the RandomWeightedAthletePolicy.reset() function is
-    called a new independence value is sampled at random from a normal
-    distribution.
+    called a new independence value and a new perception_influence value are
+    sampled at random from independent normal distributions.
     """
 
     def __init__(self,
                  threshold: float = 0.1,
+                 perception_influence_mean: float = 0.5,
+                 perception_influence_std: float = 0.25,
                  independence_mean: float = 0.5,
                  independence_std: float = 0.25):
+        self.perception_influence_dist = utils.get_truncated_normal(
+            perception_influence_mean, perception_influence_std, 0.0, 1.0
+        )
         self.independence_dist = utils.get_truncated_normal(
             independence_mean, independence_std, 0.0, 1.0
         )
-        super().__init__(threshold, self.independence_dist.rvs())
+        super().__init__(
+            threshold,
+            self.perception_influence_dist.rvs(),
+            self.independence_dist.rvs()
+        )
 
     def reset(self):
+        self.perception_influence = self.perception_influence_dist.rvs()
         self.independence = self.independence_dist.rvs()
 
 
