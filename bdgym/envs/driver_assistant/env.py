@@ -16,7 +16,8 @@ from highway_env.vehicle.controller import ControlledVehicle
 
 from bdgym.envs.driver_assistant.action import DriverAssistantAction
 from bdgym.envs.driver_assistant.policy import GuidedIDMDriverPolicy
-from bdgym.envs.driver_assistant.observation import DriverAssistantObservation
+from bdgym.envs.driver_assistant.observation import \
+    DriverAssistantObservation, observation_factory
 from bdgym.envs.driver_assistant.graphics import \
     DriverAssistantEnvViewer, AssistantActionDisplayer
 
@@ -33,21 +34,22 @@ class DriverAssistantEnv(HighwayEnv):
         driver along the highway while avoiding collisions, with some
         incentives to be in the overtaking (right) lane and going fast.
 
-        The DriverAssistantEnv adds a Driver Assistant into the environment,
-        who has the same goal as the driver. The Driver Assistant is able to
-        modify the observations that the driver observes about the controlled
-        vehicle. Specifically, it can modify the observation of the current
-        position of the vehicle 'x', 'y' and the current velocity 'vx', 'vy'.
-        Additionally, the Driver Assistant supplies recommended actions to the
-        driver 'acceleration', 'steering', which the driver observes and can
-        act on as desired.
+        The DriverAssistantEnv adds an Assistant into the environment who has
+        the same goal as the driver. The Assistant is able to modify the
+        observations that the driver observes about the controlled vehicle.
+        Specifically, it can modify the observation of the current position of
+        the vehicle 'x', 'y' and the current velocity 'vx', 'vy'. Additionally,
+        the Assistant supplies recommended actions to the driver
+        'acceleration', 'steering', which the driver observes and can act on as
+        desired.
 
     State & Starting State:
         The state is the same as for the HighwayEnv.
 
     Reward:
-        The reward is similarly as for the HighwayEnv, except the insentives
-        for being in the right lane and going at a high speed are increased.
+        The reward is similarly as for the HighwayEnv, except the incentives
+        for being in the right-hand lane and going at a high speed are
+        increased.
 
     Environment Interaction:
         The driver and assistant takes turns in performing action. Firstly,
@@ -68,41 +70,44 @@ class DriverAssistantEnv(HighwayEnv):
         Is the same as for HighwayEnv, where V is number of nearby vehicles
         observed. The first 5 of 7 column are: 'presence', 'x', 'y', 'vx',
         'vy' of the ego vehicle and the V nearby vehicles. The last two columns
-        are the recommended actions from the driver assistant: 'acceleration'
-        and 'steering'. The first row is always the ego vehicles observation.
-        For all rows except the ego vehicle row (first) the last two columns
-        are 0.0. For the driver 'presence' is always 1.0.
+        are the recommended actions from the assistant: 'acceleration' and
+        'steering'. The first row is always the ego vehicles observation. For
+        all rows except the ego vehicle row (first) the last two columns are
+        0.0. For the driver 'presence' is always 1.0.
 
         The key difference from the HighwayEnv is the addition of the driver
         assistant recommended actions and also that the observation of the
-        ego vehicle is controlled by the driver assistant (except
-        for 'presence' which is always 1.0 for the ego vehicle).
+        ego vehicle is controlled by the assistant (except for 'presence' which
+        is always 1.0 for the ego vehicle).
 
     Actions:
         Type: Box(2)
         These are unchanged from the HighwayEnv:
-        Num   Observation                           Min       Max
+        Num   Action                                Min       Max
         0     acceleration                          -1.0      1.0
         1     steering                              -1.0      1.0
 
-    Driver Assistant (AKA Assistant) Properties
-    -------------------------------------------
+    Assistant Properties
+    --------------------
     Observation:
-        Type: Box(V, 5)
+        Type: Box(V+1, 5)
         The Assistant observation is the exact observation from the orignal
         HighwayEnv: 'presence', 'x', 'y', 'vx', 'vy' of the ego vehicle and the
         V nearby vehicles.
 
     Actions:
         Type: Box(6)
-        These are unchanged from the HighwayEnv:
-        Num   Observation                           Min       Max
+        Num   Action                                Min       Max
         0     x                                     -1.0      1.0
         1     y                                     -1.0      1.0
         2     vx                                    -1.0      1.0
         3     vy                                    -1.0      1.0
         4     acceleration                          -1.0      1.0
         5     steering                              -1.0      1.0
+
+        ['x', 'y', 'vx', 'vy'] become the observations of the ego vehicle that
+        the driver will recieve. ['acceleration', 'steering'] are the
+        recommended action that the driver will also observe.
 
     """
 
@@ -132,8 +137,8 @@ class DriverAssistantEnv(HighwayEnv):
 
     def define_spaces(self) -> None:
         """Overrides Parent """
-        self.observation_type = DriverAssistantObservation(
-            self, **self.config["observation"]
+        self.observation_type = observation_factory(
+            self, self.config["observation"]
         )
         self.action_type = DriverAssistantAction(self, self.config["action"])
         self.observation_space = [
@@ -208,8 +213,9 @@ class DriverAssistantEnv(HighwayEnv):
 
     def step(self, action: Action) -> Tuple[Observation, float, bool, dict]:
         if self.next_agent == self.ASSISTANT_IDX:
-            action = self.action_type.get_assistant_absolute_action(action)
-            obs = self.observation_type.observe_driver(action)
+            if not self.config["manual_control"]:
+                self.action_type.assistant_act(action)
+            obs = self.observation_type.observe_driver()
         else:
             self.steps += 1
             self._simulate(action)
@@ -247,6 +253,7 @@ class DriverAssistantEnv(HighwayEnv):
             np.zeros(self.action_type.assistant_space().shape),
             np.zeros(self.action_type.driver_space().shape)
         ]
+        self.action_type.reset()
         return self.observation_type.observe()
 
     def render(self, mode: str = 'human') -> Optional[np.ndarray]:
@@ -264,13 +271,11 @@ class DriverAssistantEnv(HighwayEnv):
         pol_freq = self.config["policy_frequency"]
         for _ in range(int(sim_freq // pol_freq)):
             # Forward action to the vehicle
-            if self.config["manual_control"]:
-                self.action_type.act(None)
-            elif (
+            if (
                     action is not None
                     and self.time % int(sim_freq // pol_freq) == 0
             ):
-                self.action_type.act(action)
+                self.action_type.driver_act(action)
 
             self.road.act()
             self.road.step(1 / sim_freq)
@@ -321,7 +326,7 @@ class DriverAssistantEnv(HighwayEnv):
     @property
     def last_assistant_action(self) -> Action:
         """The last action performed by the assistant agent """
-        return self._last_action[self.ASSISTANT_IDX]
+        return self.action_type.last_assistant_action
 
     @property
     def last_assistant_obs(self) -> np.ndarray:

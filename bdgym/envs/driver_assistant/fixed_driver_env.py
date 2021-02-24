@@ -3,13 +3,11 @@
 It adds the guidance agent to the environment, when the driver
 is a fixed policy.
 """
-import time
 from typing import Tuple
 
 from highway_env.envs.common.action import Action
 from highway_env.envs.common.abstract import Observation
 
-import bdgym.envs.utils as utils
 from bdgym.envs.driver_assistant.env import DriverAssistantEnv
 from bdgym.envs.driver_assistant.policy import GuidedIDMDriverPolicy
 from bdgym.envs.driver_assistant.action import DriverAssistantAction
@@ -47,10 +45,10 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
         return config
 
     def step(self, action: Action) -> Tuple[Observation, float, bool, dict]:
-        action = self.action_type.get_assistant_absolute_action(action)
-        self.action_type.assistant_act(action)
+        if not self.config["manual_control"]:
+            self.action_type.assistant_act(action)
 
-        driver_obs = self.observation_type.observe_driver(action)
+        driver_obs = self.observation_type.observe_driver()
         dt = 1 / self.config["simulation_frequency"]
         driver_action = self.driver_policy.get_action(driver_obs, dt)
 
@@ -80,7 +78,7 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
 
         return obs, reward, terminal, info
 
-    def reset(self) -> None:
+    def reset(self) -> Observation:
         obs = super().reset()
         driver_config = self.config.get("driver_policy", {})
         self.driver_policy = GuidedIDMDriverPolicy.create_from(
