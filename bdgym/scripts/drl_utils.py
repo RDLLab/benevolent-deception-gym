@@ -1,4 +1,5 @@
 """Utility functions and classes for training and running Deep RL models """
+import os.path as osp
 from typing import List
 from argparse import ArgumentParser
 
@@ -9,6 +10,11 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.utils import set_random_seed, logger
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+
+
+# Default name for saved best model
+BEST_MODEL_FILE_NAME = "best_model.zip"
 
 
 def make_env(get_configured_env_fn, rank: int, seed: int = 0):
@@ -26,12 +32,10 @@ def get_env(get_configured_env_fn,
             seed: int = 0) -> gym.Env:
     """Get the agent env """
     if num_cpus == 1:
-        print("Using single environment")
         return get_configured_env_fn(seed)
     if eval_env:
         num_envs = 1
     else:
-        print(f"Running {num_cpus} envs in parallel")
         num_envs = num_cpus
 
     env = SubprocVecEnv(
@@ -47,6 +51,19 @@ def save_model(model: BaseAlgorithm):
     model_save_path = logger.get_dir()
     model.save(model_save_path)
     print(f"Model saved to = {model_save_path}")
+
+
+def load_model(model_cls, load_path: str, env: gym.Env) -> PPO:
+    """Load a model from save file """
+    return model_cls.load(load_path, env=env)
+
+
+def load_best_model(model_cls,
+                    save_dir: str,
+                    env: gym.Env) -> BaseAlgorithm:
+    """Load best model (if it exists) from save dir """
+    load_path = osp.join(save_dir, BEST_MODEL_FILE_NAME)
+    return load_model(model_cls, load_path, env)
 
 
 def get_train_epoch_lengths(save_frequency: int,
@@ -65,6 +82,33 @@ def get_train_epoch_lengths(save_frequency: int,
     return epoch_lengths
 
 
+def get_training_callbacks(eval_env: gym.Env,
+                           result_dir: str,
+                           save_frequency: int = 0,
+                           save_best: bool = False,
+                           eval_freq: int = 0,
+                           n_eval_episodes: int = 10):
+    """Get Callbacks to use during training """
+    callback_list = []
+    if save_frequency != 0:
+        checkpoint_callback = CheckpointCallback(
+            save_frequency, save_path=result_dir
+        )
+        callback_list.append(checkpoint_callback)
+
+    if save_best:
+        eval_callback = EvalCallback(
+            eval_env,
+            n_eval_episodes=n_eval_episodes,
+            eval_freq=eval_freq,
+            log_path=result_dir,
+            best_model_save_path=result_dir
+        )
+        callback_list.append(eval_callback)
+
+    return callback_list
+
+
 def train_model(model: BaseAlgorithm,
                 total_timesteps: int,
                 eval_env: gym.Env,
@@ -72,27 +116,31 @@ def train_model(model: BaseAlgorithm,
                 eval_freq: int,
                 reset_num_timesteps: bool,
                 log_name: str,
+                save_best: bool,
+                result_dir: str,
                 n_eval_episodes: int = 10,
                 **learn_kwargs):
     """Run a single training cycle of the model """
     print(f"Training model for {total_timesteps} steps")
-    epoch_lengths = get_train_epoch_lengths(save_frequency, total_timesteps)
-    print(f"With epochs of sizes: {epoch_lengths}")
+    if save_frequency <= 0:
+        save_frequency = total_timesteps
 
-    for i, t in enumerate(epoch_lengths):
-        print(f"Starting epoch {i+1} of {len(epoch_lengths)}")
-        model.learn(
-            total_timesteps=t,
-            eval_env=eval_env,
-            eval_freq=eval_freq,
-            n_eval_episodes=n_eval_episodes,
-            tb_log_name=log_name,
-            reset_num_timesteps=reset_num_timesteps,
-            **learn_kwargs
-        )
-        reset_num_timesteps = False
-        if save_frequency != 0:
-            save_model(model)
+    callback_list = get_training_callbacks(
+        eval_env,
+        result_dir,
+        save_frequency,
+        save_best,
+        eval_freq,
+        n_eval_episodes,
+    )
+
+    model.learn(
+        total_timesteps=total_timesteps,
+        callback=callback_list,
+        tb_log_name=log_name,
+        reset_num_timesteps=reset_num_timesteps,
+        **learn_kwargs
+    )
 
 
 def run_model(model: BaseAlgorithm,
@@ -145,11 +193,6 @@ def init_ppo_model(env: gym.Env,
     return ppo_model
 
 
-def load_ppo_model(load_path: str, env: gym.Env) -> PPO:
-    """Load a PPO model from save file """
-    return PPO.load(load_path, env=env)
-
-
 def continue_training() -> bool:
     """Check whether to continue training or not """
     answer = input("Continue Training [y/n]?: ")
@@ -169,7 +212,7 @@ def get_ppo_argparse(parser: ArgumentParser = None) -> ArgumentParser:
                         help=("training timesteps (default=8192). Set this"
                               " to 0 to eval model only"))
     parser.add_argument("-b", "--batch_steps", type=int, default=256,
-                        help="num steps per update (default=512)")
+                        help="num steps per update (default=256)")
     parser.add_argument("-sd", "--seed", type=int, default=0,
                         help="seed (default=0)")
     parser.add_argument("-nc", "--num_cpus", type=int, default=1,
@@ -180,6 +223,8 @@ def get_ppo_argparse(parser: ArgumentParser = None) -> ArgumentParser:
                         help=("model save frequency (in timesteps) (default="
                               "total_timesteps). If set must be 0 <= s <= "
                               "total_timesteps. 0 means no save. "))
+    parser.add_argument("-sb", "--save_best", action="store_true",
+                        help="Save the best evaluated model")
     parser.add_argument("-l", "--load_model", type=str, default="",
                         help="path to model to load (default=None)")
     return parser

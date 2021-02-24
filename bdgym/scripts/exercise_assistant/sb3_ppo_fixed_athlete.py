@@ -5,6 +5,8 @@ For Fixed Athlete Policy.
 import os.path as osp
 from pprint import pprint
 
+from stable_baselines3 import PPO
+
 import bdgym.scripts.drl_utils as drl_utils
 import bdgym.envs.exercise_assistant as ea_env
 import bdgym.envs.exercise_assistant.policy as policy
@@ -14,9 +16,13 @@ import bdgym.scripts.exercise_assistant.utils as utils
 def get_config_env(args,
                    seed: int = 0) -> ea_env.FixedAthleteExerciseAssistantEnv:
     """Get the configured Fixed Athlete Exercise Assistant Env """
-    athlete_policy = policy.WeightedAthletePolicy(
-        independence=args.independence
-    )
+    assert args.fixed_athlete_policy in policy.ATHLETE_POLICIES
+    athlete_policy_cls = policy.ATHLETE_POLICIES[args.fixed_athlete_policy]
+
+    if athlete_policy_cls == policy.WeightedAthletePolicy:
+        athlete_policy = athlete_policy_cls(independence=args.independence)
+    athlete_policy = athlete_policy_cls()
+
     if args.continuous:
         env = ea_env.FixedAthleteExerciseAssistantEnv(athlete_policy)
     else:
@@ -61,7 +67,7 @@ def main(args):
             **{'gamma': 0.999, "ent_coef": 0.1}
         )
     else:
-        ppo_model = drl_utils.load_ppo_model(args.load_model, env)
+        ppo_model = drl_utils.load_model(PPO, args.load_model, env)
 
     drl_utils.run_model(
         ppo_model,
@@ -73,6 +79,7 @@ def main(args):
     log_name = (
         f"{this_filename}_{get_env_name(args)}_i{args.independence:.3f}"
     )
+    result_dir = osp.join(utils.RESULTS_DIR, log_name)
 
     reset_num_timesteps = args.load_model == ""
     training_complete = args.total_timesteps <= 0
@@ -85,7 +92,10 @@ def main(args):
             save_frequency=args.save_frequency,
             eval_freq=args.batch_steps,
             reset_num_timesteps=reset_num_timesteps,
-            log_name=log_name
+            log_name=log_name,
+            save_best=args.save_best,
+            result_dir=result_dir,
+            n_eval_episodes=100
         )
         reset_num_timesteps = False
         drl_utils.run_model(
@@ -96,12 +106,30 @@ def main(args):
         )
         training_complete = not drl_utils.continue_training()
 
+    if args.save_best:
+        print("Running Best model")
+        env = drl_utils.get_env(get_config_env_fn, True)
+        best_model = drl_utils.load_best_model(PPO, result_dir, env)
+        drl_utils.run_model(
+            best_model,
+            drl_utils.get_env(get_config_env_fn, True),
+            args.verbosity,
+            wait_for_user=True
+        )
+
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--independence",  type=float, default=0.0,
                         help="athlete independence (default=0.0)")
+    parser.add_argument("-fatp", "--fixed_athlete_policy", type=str,
+                        default='weighted',
+                        help=(
+                            "Use fixed athlete policy from: "
+                            f"{list(policy.ATHLETE_POLICIES)}. "
+                            "(default='weighted')"
+                        ))
     # parser.add_argument("-ss", "--stack_size", type=int, default=1,
     #                     help="number of observations to stack (default=1)")
     parser.add_argument("-c", "--continuous", action="store_true",
