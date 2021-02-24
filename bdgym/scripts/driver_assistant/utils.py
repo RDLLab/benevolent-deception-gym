@@ -138,7 +138,7 @@ def get_configured_env(args: Union[Namespace, RunArgs], seed: int = None):
 
     if args.manual:
         config["manual_control"] = True
-        action_config["type"] = "AutopilotContinuousOffsetAction"
+        action_config["assistant"]["type"] = "AssistantDiscreteActionSpace"
 
     config["action"] = action_config
 
