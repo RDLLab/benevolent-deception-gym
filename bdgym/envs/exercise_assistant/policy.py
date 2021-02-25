@@ -108,6 +108,9 @@ class WeightedAthletePolicy(AthletePolicy):
                  threshold: float = 0.1,
                  perception_influence: float = 0.5,
                  independence: float = 0.5):
+        assert 0.0 < threshold < 1.0
+        assert 0.0 <= perception_influence <= 1.0
+        assert 0.0 <= independence <= 1.0
         self.threshold = threshold
         self.perception_influence = perception_influence
         self.independence = independence
@@ -140,11 +143,15 @@ class RandomWeightedAthletePolicy(WeightedAthletePolicy):
     """
 
     def __init__(self,
-                 threshold: float = 0.1,
+                 threshold_mean: float = 0.15,
+                 threshold_std: float = 0.1,
                  perception_influence_mean: float = 0.5,
                  perception_influence_std: float = 0.25,
                  independence_mean: float = 0.5,
                  independence_std: float = 0.25):
+        self.threshold_dist = utils.get_truncated_normal(
+            threshold_mean, threshold_std, 0.0, 1.0
+        )
         self.perception_influence_dist = utils.get_truncated_normal(
             perception_influence_mean, perception_influence_std, 0.0, 1.0
         )
@@ -152,12 +159,13 @@ class RandomWeightedAthletePolicy(WeightedAthletePolicy):
             independence_mean, independence_std, 0.0, 1.0
         )
         super().__init__(
-            threshold,
+            self.threshold_dist.rvs(),
             self.perception_influence_dist.rvs(),
             self.independence_dist.rvs()
         )
 
     def reset(self):
+        self.threshold = self.threshold_dist.rvs()
         self.perception_influence = self.perception_influence_dist.rvs()
         self.independence = self.independence_dist.rvs()
 
@@ -231,6 +239,15 @@ class GreedyDiscreteAssistantPolicy(AssistantPolicy):
         if obs[0] >= self.threshold:
             return DiscreteAssistantAction.NO_CHANGE_PERFORM_REP
         return DiscreteAssistantAction.NO_CHANGE_END_SET
+
+
+class DoNothingDiscreteAssistantPolicy(AssistantPolicy):
+    """Assistant Policy that reports observed athlete energy truthfully and
+    always recommends athlete performs rep
+    """
+
+    def get_action(self, obs: np.ndarray) -> DiscreteAssistantAction:
+        return DiscreteAssistantAction.NO_CHANGE_PERFORM_REP
 
 
 class ManualAssistantPolicy(AssistantPolicy):
@@ -314,4 +331,5 @@ ATHLETE_POLICIES = {
 ASSISTANT_POLICIES = {
     'discrete_greedy': GreedyDiscreteAssistantPolicy,
     'discrete_random': RandomDiscreteAssistantPolicy,
+    'discrete_donothing': DoNothingDiscreteAssistantPolicy
 }
