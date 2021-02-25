@@ -29,6 +29,7 @@ class EnvViewer:
     BLUE = (100, 200, 255)
     YELLOW = (200, 200, 0)
     BLACK = (60, 60, 60)
+    WHITE = (255, 255, 255)
     PURPLE = (200, 0, 150)
     DEFAULT_COLOR = YELLOW
     EGO_COLOR = GREEN
@@ -62,10 +63,13 @@ class EnvViewer:
         """Update the pygame display of the environment """
         self.sim_surface.fill(self.BG_COLOR)
 
-        if not self.env.is_athletes_turn() \
-           and self.env.athlete_performed_rep():
-            self._perform_rep()
-            return
+        if not self.env.is_athletes_turn():
+            if self.env.athlete_performed_rep():
+                self._perform_rep()
+                return
+            if self.env.set_count > 0:
+                self._perform_end_set()
+                return
 
         self._draw()
         pg.display.flip()
@@ -85,7 +89,11 @@ class EnvViewer:
             and not self.env.athlete_performed_rep()
         )
 
-        self.fig_graphics.display(self.env.set_count, animate, end_set)
+        overexerted = self.env.athlete_overexerted()
+
+        self.fig_graphics.display(
+            self.env.set_count, animate, end_set, overexerted
+        )
         self.athlete_graphics.display(self.env.last_athlete_obs)
         self.screen.blit(self.sim_surface, (0, 0))
 
@@ -96,11 +104,26 @@ class EnvViewer:
             pg.display.update()
             self.clock.tick(self.fig_graphics.FRAME_RATE)
 
+    def _perform_end_set(self) -> None:
+        self.fig_graphics.reset()
+        for _ in range(self.fig_graphics.animation_length):
+            self._draw(False)
+            pg.display.update()
+            self.clock.tick(self.fig_graphics.FRAME_RATE)
+
+    def _draw_overexerted(self) -> None:
+        self.fig_graphics.reset()
+        for _ in range(self.fig_graphics.animation_length):
+            self._draw(False)
+            pg.display.update()
+            self.clock.tick(self.fig_graphics.FRAME_RATE)
+
 
 class FigureAnimationGraphics:
     """Visualization of stick figure performing exercises """
 
-    BG_COLOR = EnvViewer.BLUE
+    BG_COLOR = EnvViewer.WHITE
+    OVEREXERTED_COLOR = EnvViewer.RED
     NUM_IMGS = 4
     FRAME_RATE = 15
     FONT_SIZE = 40
@@ -142,14 +165,21 @@ class FigureAnimationGraphics:
     def display(self,
                 set_count: int,
                 animate: bool = False,
-                end_set: bool = False) -> None:
+                end_set: bool = False,
+                overexerted: bool = False) -> None:
         """Update Figure Animation Display """
-        self.surface.fill(self.BG_COLOR)
+        if overexerted:
+            self.surface.fill(self.OVEREXERTED_COLOR)
+        else:
+            self.surface.fill(self.BG_COLOR)
 
         text_img = self._set_count_text(set_count)
         self.surface.blit(text_img, self.text_pos)
 
-        if end_set:
+        if overexerted:
+            overexerted_text_img = self._overexerted_text()
+            self.surface.blit(overexerted_text_img, self.end_set_text_pos)
+        elif end_set:
             end_set_text_img = self._end_set_text(set_count-1)
             self.surface.blit(end_set_text_img, self.end_set_text_pos)
 
@@ -176,6 +206,12 @@ class FigureAnimationGraphics:
     def _end_set_text(self, set_count: int) -> pg.SurfaceType:
         text = f"End Set {set_count}"
         return self.font.render(text, True, EnvViewer.GREEN, self.BG_COLOR)
+
+    def _overexerted_text(self) -> pg.SurfaceType:
+        text = "Overexerted :("
+        return self.font.render(
+            text, True, EnvViewer.BLACK, self.OVEREXERTED_COLOR
+        )
 
     @property
     def animation_length(self) -> int:
@@ -276,7 +312,7 @@ class AssistantGraphics(AgentGraphics):
             root_surface,
             root_position=(0, 0),
             agent_name="Assistant",
-            bg_color=EnvViewer.RED
+            bg_color=EnvViewer.BLUE
         )
         self.render_assistant_info = render_assistant_info
         self.display_offset = display_offset
