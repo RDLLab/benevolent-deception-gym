@@ -135,7 +135,7 @@ class ExerciseAssistantEnv(gym.Env):
         'render.modes': ['human', 'asci']
     }
 
-    MAX_SETS = 5
+    MAX_SETS = 20
     """Maximum number of sets the athlete can complete """
 
     INIT_ENERGY_RANGE = [0.75, 1.0]
@@ -194,6 +194,7 @@ class ExerciseAssistantEnv(gym.Env):
         self._last_obs: List[np.ndarray] = []
         self._last_action: List[Union[int, np.ndarray]] = []
         self._last_reward = 0.0
+        self.assistant_deception: List[float] = []
         self.next_agent = self.ASSISTANT_IDX
 
         # Rendering
@@ -210,7 +211,9 @@ class ExerciseAssistantEnv(gym.Env):
         init_energy = np.random.uniform(*self.INIT_ENERGY_RANGE)
         self.state = (init_energy, 0)
         assistant_obs = np.array([init_energy, 0.0, 0.0], dtype=np.float32)
-        athlete_energy_obs = self._apply_athlete_noise(init_energy)
+        athlete_energy_obs = self._apply_athlete_noise(
+            init_energy, self.MAX_ENERGY
+        )
         athlete_obs = np.array(
             [athlete_energy_obs, 0.0, athlete_energy_obs, 0.0],
             dtype=np.float32
@@ -218,6 +221,7 @@ class ExerciseAssistantEnv(gym.Env):
         self._last_obs = [assistant_obs, athlete_obs]
         self._last_action = [None, None]
         self._last_reward = 0.0
+        self.assistant_deception = []
         self.next_agent = self.ASSISTANT_IDX
         return assistant_obs
 
@@ -257,6 +261,7 @@ class ExerciseAssistantEnv(gym.Env):
             obs = self._get_assistant_obs(action)
         else:
             action = self._lmap_assistant_action(action)
+            self._track_deception(action)
             obs = self._get_athlete_obs(action)
 
         reward = self._get_reward(action)
@@ -268,6 +273,15 @@ class ExerciseAssistantEnv(gym.Env):
         self._last_obs[self.next_agent] = obs
         self._last_reward = reward
         return obs, reward, done, info
+
+    def _track_deception(self, assistant_action: np.ndarray):
+        # Per Step Deception is the difference between the energy level that
+        # the assistant observed and the energy level it communicates with the
+        # athlete.
+        obs_energy = self._last_obs[self.ASSISTANT_IDX][0]
+        reported_energy = assistant_action[0]
+        deception = abs(obs_energy - reported_energy)
+        self.assistant_deception.append(deception)
 
     def render(self, mode: str = 'human'):
         """Render the environment
@@ -404,7 +418,9 @@ class ExerciseAssistantEnv(gym.Env):
 
     def _get_athlete_obs(self, action: np.ndarray) -> np.ndarray:
         sets_completed = self.state[1] / self.MAX_SETS
-        percieved_energy = self._apply_athlete_noise(self.state[0])
+        percieved_energy = self._apply_athlete_noise(
+            self.state[0], self._last_obs[self.ATHLETE_IDX][0]
+        )
         return np.array(
             [percieved_energy, sets_completed, action[0], action[1]],
             dtype=np.float32
@@ -439,10 +455,14 @@ class ExerciseAssistantEnv(gym.Env):
         }
         return state_info
 
-    def _apply_athlete_noise(self, energy: float) -> float:
+    def _apply_athlete_noise(self,
+                             previous_energy_obs: float,
+                             energy: float) -> float:
         noise = np.random.normal(
             self.ATHLETE_OBS_NOISE_MEAN, self.ATHLETE_OBS_NOISE_VAR
         )
+        if energy + noise > previous_energy_obs:
+            return previous_energy_obs
         return max(self.MIN_ENERGY, min(self.MAX_ENERGY, energy + noise))
 
     def _apply_rep_cost(self, energy: float) -> float:
