@@ -8,15 +8,17 @@ import bdgym.scripts.exercise_assistant.utils as utils
 # (Assistant, Athlete) Fixed Policy pairs
 # Note when athlete is 'random' the assistant policy does nothing
 POLICY_PAIRS = [
-    ('discrete_random', 'random'),
-    ('discrete_random', 'weighted'),
-    ('discrete_random', 'random_weighted')
+    # ('discrete_donothing', 'weighted'),
+    ('discrete_donothing', 'random_weighted'),
+    ('discrete_donothing', 'random'),
+    # ('discrete_random', 'weighted'),
+    # ('discrete_random', 'random_weighted')
 ]
 # Note 0.0 = 'obedient' and 1.0 = 'greedy'
 PERCEPT_INFLUENCES = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
 INDEPENDENCES = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
 NUM_EPISODES = 100
-SEED = 0
+SEEDS = list(range(10))
 VERBOSE = False
 RENDER = ""
 MANUAL = False
@@ -31,7 +33,6 @@ def create_run_args() -> List[utils.RunArgs]:
             "fixed_athlete_policy": policy_pair[1],
             "fixed_assistant_policy": policy_pair[0],
             "num_episodes": NUM_EPISODES,
-            "seed": SEED,
             "render": RENDER,
             "no_athlete_render": False,
             "no_assistant_render": False,
@@ -48,12 +49,14 @@ def create_run_args() -> List[utils.RunArgs]:
 
         for independence in independences_list:
             for perception_influence in pi_list:
-                run_args = utils.RunArgs(
-                    independence=independence,
-                    perception_influence=perception_influence,
-                    **run_args_kwargs
-                )
-                all_run_args.append(run_args)
+                for seed in SEEDS:
+                    run_args = utils.RunArgs(
+                        independence=independence,
+                        perception_influence=perception_influence,
+                        seed=seed,
+                        **run_args_kwargs
+                    )
+                    all_run_args.append(run_args)
     return all_run_args
 
 

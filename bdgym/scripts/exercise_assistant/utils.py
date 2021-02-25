@@ -39,7 +39,9 @@ Result = namedtuple(
         "steps_std",
         "overexertion_prob",
         "time_mean",
-        "time_std"
+        "time_std",
+        "deception_mean",
+        "deception_std"
     ]
 )
 
@@ -76,6 +78,10 @@ def display_result(result: Result):
     print(f"Mean steps = {result.steps_mean:.3f} +/- {result.steps_std:.3f}")
     print(f"Overexertion prob = {result.overexertion_prob:.3f}")
     print(f"Mean time = {result.time_mean:.3f} +/- {result.time_std:.3f}")
+    print(
+        f"Mean deception = {result.deception_mean:.3f} "
+        f"+/- {result.deception_std:.3f}"
+    )
     print(f"{'-'*60}\n")
 
 
@@ -200,7 +206,7 @@ def get_configured_env(args: Union[Namespace, RunArgs], seed: int = None):
 def run_fixed_athlete_episode(args: Union[Namespace, RunArgs],
                               env: ea_env.FixedAthleteExerciseAssistantEnv,
                               assistant_policy: policy.AssistantPolicy
-                              ) -> Tuple[float, int, bool]:
+                              ) -> Tuple[float, int, bool, float]:
     """Run fixed athlete policy env for a single episode"""
     obs = env.reset()
     if args.render != '':
@@ -218,13 +224,14 @@ def run_fixed_athlete_episode(args: Union[Namespace, RunArgs],
         if args.render != '':
             env.render(args.render)
 
-    return total_return, steps, env.athlete_overexerted()
+    deception_mean = np.mean(env.assistant_deception)
+    return total_return, steps, env.athlete_overexerted(), deception_mean
 
 
 def run_manual_fixed_athlete_episode(
         args: Union[Namespace, RunArgs],
         env: ea_env.FixedAthleteExerciseAssistantEnv
-) -> Tuple[float, int, bool]:
+) -> Tuple[float, int, bool, float]:
     """Run a single episode """
     obs = env.reset()
 
@@ -255,12 +262,14 @@ def run_manual_fixed_athlete_episode(
         if args.render != '':
             env.render(args.render)
 
-    return total_return, steps, env.athlete_overexerted()
+    deception_mean = np.mean(env.assistant_deception)
+
+    return total_return, steps, env.athlete_overexerted(), deception_mean
 
 
 def run_manual_episode(args: Union[Namespace, RunArgs],
                        env: ea_env.ExerciseAssistantEnv
-                       ) -> Tuple[float, int, bool]:
+                       ) -> Tuple[float, int, bool, float]:
     """Run a single episode """
     ea_obs = env.reset()
 
@@ -299,7 +308,8 @@ def run_manual_episode(args: Union[Namespace, RunArgs],
         if args.render:
             env.render()
 
-    return total_return, steps, env.athlete_overexerted()
+    deception_mean = np.mean(env.assistant_deception)
+    return total_return, steps, env.athlete_overexerted(), deception_mean
 
 
 def get_run_fn(args: Union[Namespace, RunArgs]) -> Tuple[Callable, Dict]:
@@ -334,21 +344,24 @@ def run(args: Union[Namespace, RunArgs]) -> Result:
     ep_overexertions = []
     ep_steps = []
     ep_times = []
+    ep_deception = []
     for e in range(args.num_episodes):
         start_time = time.time()
-        total_return, total_steps, overexerted = run_fn(
+        total_return, total_steps, overexerted, deception = run_fn(
             args, env, **run_kwargs
         )
         ep_times.append(time.time() - start_time)
         ep_returns.append(total_return)
         ep_steps.append(total_steps)
         ep_overexertions.append(int(overexerted))
+        ep_deception.append(deception)
 
         if args.verbose and e > 0 and e % display_freq == 0:
             print(
                 f"Episode {e} complete: "
                 f"return={total_return:.3f} steps={total_steps} "
-                f"overexerted={overexerted} time={ep_times[-1]:.3f}"
+                f"overexerted={overexerted} time={ep_times[-1]:.3f} "
+                f"deception={deception:.3f}"
             )
 
     result = Result(
@@ -364,7 +377,9 @@ def run(args: Union[Namespace, RunArgs]) -> Result:
         steps_std=np.std(ep_steps),
         overexertion_prob=np.mean(ep_overexertions),
         time_mean=np.mean(ep_times),
-        time_std=np.std(ep_times)
+        time_std=np.std(ep_times),
+        deception_mean=np.mean(ep_deception),
+        deception_std=np.std(ep_deception)
     )
 
     if args.verbose:
@@ -390,4 +405,31 @@ def save_results(all_results: List[Result],
         fout.write("\t".join(headers) + "\n")
         for result in all_results:
             row = [str(v) for v in result._asdict().values()]
+            fout.write("\t".join(row) + "\n")
+
+
+def append_result_to_file(results: Union[List[Result], Result],
+                          filepath: str,
+                          add_header: bool = True):
+    """Append result to file
+
+    Will add header if add_header is True and the file at filepath doesn't
+    exist
+    """
+    if not isinstance(results, list):
+        results = [results]
+
+    if not osp.isfile(filepath) and add_header:
+        with open(filepath, "w") as fout:
+            headers = results[0]._fields
+            fout.write("\t".join(headers) + "\n")
+
+    with open(filepath, "a") as fout:
+        for result in results:
+            row = []
+            for v in result._asdict().values():
+                if isinstance(v, float):
+                    row.append(f"{v:.4f}")
+                else:
+                    row.append(str(v))
             fout.write("\t".join(row) + "\n")

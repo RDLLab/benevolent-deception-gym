@@ -20,8 +20,18 @@ def get_config_env(args,
     athlete_policy_cls = policy.ATHLETE_POLICIES[args.fixed_athlete_policy]
 
     if athlete_policy_cls == policy.WeightedAthletePolicy:
-        athlete_policy = athlete_policy_cls(independence=args.independence)
-    athlete_policy = athlete_policy_cls()
+        athlete_policy = athlete_policy_cls(
+            perception_influence=args.perception_influence,
+            independence=args.independence
+        )
+    elif (athlete_policy_cls in [
+            policy.ObedientAthletePolicy, policy.GreedyAthletePolicy
+    ]):
+        athlete_policy = athlete_policy_cls(
+            perception_influence=args.perception_influence
+        )
+    else:
+        athlete_policy = athlete_policy_cls()
 
     if args.continuous:
         env = ea_env.FixedAthleteExerciseAssistantEnv(athlete_policy)
@@ -123,6 +133,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--independence",  type=float, default=0.0,
                         help="athlete independence (default=0.0)")
+    parser.add_argument("-pi", "--perception_influence",
+                        type=float, default=0.5,
+                        help="athlete perception influence (default=0.5)")
     parser.add_argument("-fatp", "--fixed_athlete_policy", type=str,
                         default='weighted',
                         help=(
