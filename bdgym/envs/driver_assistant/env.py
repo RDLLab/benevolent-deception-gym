@@ -16,8 +16,7 @@ from highway_env.vehicle.controller import ControlledVehicle
 
 from bdgym.envs.driver_assistant.action import DriverAssistantAction
 from bdgym.envs.driver_assistant.policy import GuidedIDMDriverPolicy
-from bdgym.envs.driver_assistant.observation import \
-    DriverAssistantObservation, observation_factory
+from bdgym.envs.driver_assistant.observation import observation_factory
 from bdgym.envs.driver_assistant.graphics import \
     DriverAssistantEnvViewer, AssistantActionDisplayer
 
@@ -213,7 +212,9 @@ class DriverAssistantEnv(HighwayEnv):
 
     def step(self, action: Action) -> Tuple[Observation, float, bool, dict]:
         if self.next_agent == self.ASSISTANT_IDX:
-            if not self.config["manual_control"]:
+            if self.config["manual_control"]:
+                self.action_type.assistant_act(None)
+            else:
                 self.action_type.assistant_act(action)
             obs = self.observation_type.observe_driver()
         else:

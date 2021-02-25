@@ -1,5 +1,5 @@
 """Action class for BDGym Highway Autopilot environment """
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Tuple
 
 import numpy as np
 from gym import spaces
@@ -199,11 +199,21 @@ class AssistantDiscreteActionSpace(ActionType):
           observation matrix which is the current offset.
     """
 
-    STEP_SIZE = 0.05
+    STEP_SIZE_MAP = {
+        'x': 0.001,
+        'y': 0.05,
+        'vx': 0.05,
+        'vy': 0.05,
+        'acceleration': 0.05,
+        'steering': 0.025
+    }
     """This step size of each action
 
     This is the proportion of the max range of a variable, so the actual
     step size will vary depending on the variable being affected.
+
+    The proportion is set per variable since the range of each variable
+    can be significantly different.
     """
 
     ASSISTANT_DISCRETE_ACTION_SPACE_SIZE = 6
@@ -228,7 +238,7 @@ class AssistantDiscreteActionSpace(ActionType):
     def __init__(self,
                  env: 'DriverAssistantEnv',
                  features_range: dict,
-                 **config) -> None:
+                 **kwargs) -> None:
         self.env = env
         self.features_range = features_range
         # This is the last action as unnormalized, continuous assistant action
@@ -244,7 +254,8 @@ class AssistantDiscreteActionSpace(ActionType):
         for feature in self.ASSISTANT_DISCRETE_ACTION_INDICES:
             feat_range = self.features_range[feature]
             max_range = feat_range[1] - feat_range[0]
-            self.feature_step_size[feature] = self.STEP_SIZE*max_range
+            step_proportion = self.STEP_SIZE_MAP[feature]
+            self.feature_step_size[feature] = step_proportion*max_range
 
     def space(self) -> spaces.MultiDiscrete:
         """ Overrides ContinousAction.space() """
@@ -262,38 +273,26 @@ class AssistantDiscreteActionSpace(ActionType):
     def act(self, action: Action) -> None:
         """ Overrides parent
 
-        Assumes action is unnormalized
+        Assumes action is normalized
         """
-        # print("\nAction:", action)
-        # print("init current_offset:", self.current_offset)
-        self._update_current_offset(action)
+        if action is not None:
+            # print("\nAction:", action)
+            # print("init current_offset:", self.current_offset)
+            self._update_current_offset(action)
+            recommendation = self._get_recommendations(action)
+        else:
+            recommendation = self.last_action[len(self.OFFSET_FEATURES):]
+
         last_obs = self.get_last_ego_obs()
-        # print("new current_offset:", self.current_offset)
-        # print("last_obs:", last_obs)
 
         abs_action = np.zeros(len(self.ASSISTANT_DISCRETE_ACTION_INDICES))
         # print("init abs_action:", abs_action)
         abs_action[:len(self.OFFSET_FEATURES)] = self.current_offset + last_obs
         # print("abs_action after obs:", abs_action)
-
-        for feature in ['acceleration', 'steering']:
-            f_idx = self.ASSISTANT_DISCRETE_ACTION_INDICES[feature]
-            f_action = action[f_idx]
-            if f_action == self.UP:
-                delta = self.feature_step_size[feature]
-            elif f_action == self.DOWN:
-                delta = -1 * self.feature_step_size[feature]
-            else:
-                delta = 0
-            # print(feature, delta)
-            abs_action[f_idx] = delta
-
+        abs_action[len(self.OFFSET_FEATURES):] = recommendation
         # print("abs_action after rcmd:", abs_action)
-
         # print("Performing action:", abs_action)
         self.last_action = abs_action
-        # import time
-        # time.sleep(0.1)
 
     def _update_current_offset(self, action: Action) -> None:
         for feature in self.OFFSET_FEATURES:
@@ -311,6 +310,20 @@ class AssistantDiscreteActionSpace(ActionType):
                 self.features_range[feature][0],
                 self.features_range[feature][1]
             )
+
+    def _get_recommendations(self, action: Action) -> Tuple[float, float]:
+        controls = []
+        for feature in ['acceleration', 'steering']:
+            f_idx = self.ASSISTANT_DISCRETE_ACTION_INDICES[feature]
+            f_action = action[f_idx]
+            if f_action == self.UP:
+                delta = self.feature_step_size[feature]
+            elif f_action == self.DOWN:
+                delta = -1 * self.feature_step_size[feature]
+            else:
+                delta = 0
+            controls.append(delta)
+        return controls[0], controls[1]
 
     @property
     def vehicle_class(self) -> Callable:
