@@ -1,5 +1,5 @@
 """The Exercise Assistant Environment. """
-from typing import Tuple, Union, Dict
+from typing import Tuple, Union, Dict, List, Optional
 
 import gym
 import numpy as np
@@ -174,7 +174,12 @@ class ExerciseAssistantEnv(gym.Env):
     REP_REWARD = 1.0
     """Reward for athlete performing a rep """
 
-    def __init__(self):
+    def __init__(self,
+                 render_assistant_info: bool = True,
+                 render_athlete_info: bool = True):
+        self.render_assistant_info = render_assistant_info
+        self.render_athlete_info = render_athlete_info
+
         self.action_space = {
             self.ASSISTANT_IDX: spaces.Box(low=0.0, high=1.0, shape=(2,)),
             self.ATHLETE_IDX: spaces.Discrete(len(AthleteAction))
@@ -185,14 +190,14 @@ class ExerciseAssistantEnv(gym.Env):
             self.ATHLETE_IDX: spaces.Box(low=0.0, high=1.0, shape=(4,))
         }
 
-        self.state = [self.MAX_ENERGY, 0]
-        self._last_obs = []
-        self._last_action = []
+        self.state = (self.MAX_ENERGY, 0)
+        self._last_obs: List[np.ndarray] = []
+        self._last_action: List[Union[int, np.ndarray]] = []
         self._last_reward = 0.0
         self.next_agent = self.ASSISTANT_IDX
 
         # Rendering
-        self.viewer = None
+        self.viewer: Optional[EnvViewer] = None
 
     def reset(self) -> np.ndarray:
         """Reset the environment
@@ -203,7 +208,7 @@ class ExerciseAssistantEnv(gym.Env):
             initial observation for the assistant
         """
         init_energy = np.random.uniform(*self.INIT_ENERGY_RANGE)
-        self.state = [init_energy, 0]
+        self.state = (init_energy, 0)
         assistant_obs = np.array([init_energy, 0.0, 0.0], dtype=np.float32)
         athlete_energy_obs = self._apply_athlete_noise(init_energy)
         athlete_obs = np.array(
@@ -264,7 +269,7 @@ class ExerciseAssistantEnv(gym.Env):
         self._last_reward = reward
         return obs, reward, done, info
 
-    def render(self, mode: str = 'asci'):
+    def render(self, mode: str = 'human'):
         """Render the environment
 
         Parameters
@@ -356,6 +361,7 @@ class ExerciseAssistantEnv(gym.Env):
         """The last observation of the athlete """
         return self._last_obs[self.ATHLETE_IDX]
 
+    @property
     def discrete_assistant(self) -> bool:
         """Check if assistant is using discrete actions """
         return isinstance(

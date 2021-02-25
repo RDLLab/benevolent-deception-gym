@@ -12,8 +12,11 @@ from bdgym.envs.exercise_assistant.discrete_env import \
 class FixedAthleteExerciseAssistantEnv(ExerciseAssistantEnv):
     """ The Exercise Assistant Environment with Fixed Athlete Policy """
 
-    def __init__(self, athlete_policy: AthletePolicy):
-        super().__init__()
+    def __init__(self,
+                 athlete_policy: AthletePolicy,
+                 render_assistant_info: bool = True,
+                 render_athlete_info: bool = True):
+        super().__init__(render_assistant_info, render_athlete_info)
         self.athlete_policy = athlete_policy
         self.action_space = self.action_space[self.ASSISTANT_IDX]
         self.observation_space = self.observation_space[self.ASSISTANT_IDX]
@@ -23,6 +26,7 @@ class FixedAthleteExerciseAssistantEnv(ExerciseAssistantEnv):
         athlete_action = self.athlete_policy.get_action(athlete_obs)
         return super().step(athlete_action)
 
+    @property
     def discrete_assistant(self) -> bool:
         return False
 
@@ -34,8 +38,11 @@ class FixedAthleteExerciseAssistantEnv(ExerciseAssistantEnv):
 class DiscreteFixedAthleteExerciseAssistantEnv(DiscreteExerciseAssistantEnv):
     """ The Discrete Exercise Assistant Env with Fixed Athlete Policy """
 
-    def __init__(self, athlete_policy: AthletePolicy):
-        super().__init__()
+    def __init__(self,
+                 athlete_policy: AthletePolicy,
+                 render_assistant_info: bool = True,
+                 render_athlete_info: bool = True):
+        super().__init__(render_assistant_info, render_athlete_info)
         self.athlete_policy = athlete_policy
         self.action_space = self.action_space[self.ASSISTANT_IDX]
         self.observation_space = self.observation_space[self.ASSISTANT_IDX]
@@ -45,6 +52,7 @@ class DiscreteFixedAthleteExerciseAssistantEnv(DiscreteExerciseAssistantEnv):
         athlete_action = self.athlete_policy.get_action(athlete_obs)
         return super().step(athlete_action)
 
+    @property
     def discrete_assistant(self) -> bool:
         return True
 

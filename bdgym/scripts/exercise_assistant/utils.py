@@ -54,6 +54,8 @@ RunArgs = namedtuple(
         "num_episodes",
         "seed",
         "render",
+        "no_athlete_render",
+        "no_assistant_render",
         "verbose",
         "manual",
         "discrete"
@@ -103,8 +105,12 @@ def argument_parser() -> ArgumentParser:
                         help="Number of episodes (default=100)")
     parser.add_argument("-s", "--seed", type=int, default=None,
                         help="random seed (default=None)")
-    parser.add_argument("-r", "--render", action="store_true",
-                        help="Render episodes")
+    parser.add_argument("-r", "--render", type=str, default="",
+                        help="Render mode (default=''=no render)")
+    parser.add_argument("--no_athlete_render", action="store_true",
+                        help="Don't render athlete info")
+    parser.add_argument("--no_assistant_render", action="store_true",
+                        help="Don't render assistant info")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Verbosity mode")
     parser.add_argument("-m", "--manual", action="store_true",
@@ -160,15 +166,20 @@ def get_configured_env(args: Union[Namespace, RunArgs], seed: int = None):
     """Get the configured env """
     use_fixed_athlete = args.fixed_athlete_policy != ''
 
+    env_kwargs = {
+        "render_assistant_info": not args.no_assistant_render,
+        "render_athlete_info": not args.no_athlete_render
+    }
+
     if use_fixed_athlete:
         athlete_policy = init_athlete_policy(args)
         if args.discrete:
             env = ea_env.DiscreteFixedAthleteExerciseAssistantEnv(
-                athlete_policy=athlete_policy
+                athlete_policy=athlete_policy, **env_kwargs
             )
         else:
             env = ea_env.FixedAthleteExerciseAssistantEnv(
-                athlete_policy=athlete_policy
+                athlete_policy=athlete_policy, **env_kwargs
             )
     else:
         if args.discrete:
@@ -192,8 +203,8 @@ def run_fixed_athlete_episode(args: Union[Namespace, RunArgs],
                               ) -> Tuple[float, int, bool]:
     """Run fixed athlete policy env for a single episode"""
     obs = env.reset()
-    if args.render:
-        env.render()
+    if args.render != '':
+        env.render(args.render)
 
     done = False
     total_return = 0.0
@@ -204,8 +215,8 @@ def run_fixed_athlete_episode(args: Union[Namespace, RunArgs],
         total_return += reward
         steps += 1
 
-        if args.render:
-            env.render()
+        if args.render != '':
+            env.render(args.render)
 
     return total_return, steps, env.athlete_overexerted()
 
@@ -222,8 +233,8 @@ def run_manual_fixed_athlete_episode(
     else:
         assistant_policy = policy.ManualDiscreteAssistantPolicy(True)
 
-    if args.render:
-        env.render()
+    if args.render != '':
+        env.render(args.render)
 
     total_return = 0.0
     steps = 0
@@ -241,8 +252,8 @@ def run_manual_fixed_athlete_episode(
             print(f"Done: {done}")
         steps += 1
 
-        if args.render:
-            env.render()
+        if args.render != '':
+            env.render(args.render)
 
     return total_return, steps, env.athlete_overexerted()
 

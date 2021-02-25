@@ -170,16 +170,18 @@ class ObedientAthletePolicy(WeightedAthletePolicy):
     """
 
     def __init__(self,
-                 threshold: float = 0.1):
-        super().__init__(threshold, 0.0)
+                 threshold: float = 0.1,
+                 perception_influence: float = 0.5):
+        super().__init__(threshold, perception_influence, 0.0)
 
 
 class GreedyAthletePolicy(WeightedAthletePolicy):
     """Athlete Policy that performs rep if percieved energy >= threshold """
 
     def __init__(self,
-                 threshold: float = 0.1):
-        super().__init__(threshold, 1.0)
+                 threshold: float = 0.1,
+                 perception_influence: float = 0.5):
+        super().__init__(threshold, perception_influence, 1.0)
 
 
 class ManualAthletePolicy(AthletePolicy):
@@ -243,19 +245,29 @@ class ManualAssistantPolicy(AssistantPolicy):
 
         signal = 0.0
         rcmd = 0.0
-        print("\nSelect Assistant Action (energy to report in [0.0, 1.0]:")
+        print("\nSelect Assistant Actions:")
         while True:
             try:
-                signal = float(input("Energy: "))
+                user_input = input(
+                    "Energy in [0.0, 1.0] or '' to report observed energy: "
+                )
+                if user_input == "":
+                    signal = obs[0]
+                else:
+                    signal = float(user_input)
                 assert 0.0 <= signal <= 1.0
                 break
             except (ValueError, AssertionError):
                 print("Invalid choice. Try again.")
 
-        print("Select Assistant recommended Action (in [0.0, 1.0]:")
         while True:
             try:
-                rcmd = float(input("Recommendation: "))
+                rcmd = float(
+                    input(
+                        "Recommendation in [0.0, 1.0] "
+                        "(0.0=PERFORM_REP, 1.0=END_SET): "
+                    )
+                )
                 assert 0.0 <= rcmd <= 1.0
                 break
             except (ValueError, AssertionError):

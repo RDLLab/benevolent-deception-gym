@@ -18,7 +18,7 @@ INDEPENDENCES = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
 NUM_EPISODES = 100
 SEED = 0
 VERBOSE = False
-RENDER = False
+RENDER = ""
 MANUAL = False
 DISCRETE = True
 
@@ -33,6 +33,8 @@ def create_run_args() -> List[utils.RunArgs]:
             "num_episodes": NUM_EPISODES,
             "seed": SEED,
             "render": RENDER,
+            "no_athlete_render": False,
+            "no_assistant_render": False,
             "verbose": VERBOSE,
             "manual": MANUAL,
             "discrete": DISCRETE

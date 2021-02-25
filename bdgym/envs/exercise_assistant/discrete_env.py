@@ -1,5 +1,5 @@
 """The Exercise Assistant Environment where Assistant has Discrete Actions. """
-from typing import Tuple, Union, Dict
+from typing import Tuple, Dict
 
 import numpy as np
 from gym import spaces
@@ -70,8 +70,10 @@ class DiscreteExerciseAssistantEnv(ExerciseAssistantEnv):
     OFFSET_MAX = 1.0
     """The maximum possible offset value """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self,
+                 render_assistant_info: bool = True,
+                 render_athlete_info: bool = True):
+        super().__init__(render_assistant_info, render_athlete_info)
         self.action_space[self.ASSISTANT_IDX] = spaces.Discrete(
             len(DiscreteAssistantAction)
         )
