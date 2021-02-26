@@ -114,7 +114,7 @@ class DriverAssistantEnv(HighwayEnv):
     HIGH_SPEED_REWARD: float = 0.8
 
     SPEED_UPPER_LIMIT = GuidedIDMDriverPolicy.MAX_SPEED
-    ACC_UPPER_LIMIT = 10.0
+    ACC_UPPER_LIMIT = 15.0
 
     OTHER_VEHICLE_OBS_NOISE = 0.0    # [m]
 

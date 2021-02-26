@@ -9,9 +9,10 @@ from highway_env.envs.common.action import Action
 from highway_env.envs.common.abstract import Observation
 
 from bdgym.envs.driver_assistant.env import DriverAssistantEnv
-from bdgym.envs.driver_assistant.policy import GuidedIDMDriverPolicy
 from bdgym.envs.driver_assistant.action import DriverAssistantAction
 from bdgym.envs.driver_assistant.observation import DriverAssistantObservation
+from bdgym.envs.driver_assistant.policy import \
+    GuidedIDMDriverPolicy, driver_policy_factory
 
 
 class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
@@ -38,7 +39,7 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
         config = super().default_config()
         config.update({
             "driver_policy": {
-                "type": "GuidedIDMDriverVehicle",
+                "type": "GuidedIDMDriverPolicy",
                 "independence": 0.75
             },
         })
@@ -83,7 +84,5 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
     def reset(self) -> Observation:
         obs = super().reset()
         driver_config = self.config.get("driver_policy", {})
-        self.driver_policy = GuidedIDMDriverPolicy.create_from(
-            self.vehicle, **driver_config
-        )
+        self.driver_policy = driver_policy_factory(self, driver_config)
         return obs

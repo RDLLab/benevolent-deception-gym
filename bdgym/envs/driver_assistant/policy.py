@@ -1,4 +1,5 @@
 """Driver Policies for the Driver Assistant Environment """
+from copy import deepcopy
 from typing import Tuple, Optional, List, Dict
 
 import numpy as np
@@ -12,6 +13,7 @@ from highway_env.vehicle.behavior import IDMVehicle
 from highway_env.road.road import Road, LaneIndex, Route
 
 import bdgym.envs.utils as utils
+from bdgym.envs.driver_assistant.driver_types import sample_driver_config
 
 Observation = np.ndarray
 
@@ -428,6 +430,44 @@ class IDMAssistantPolicy(IDMDriverPolicy):
         return action
 
 
+class RandomAssistantPolicy(IDMAssistantPolicy):
+    """A Random Assistant policy
+
+    Specifically:
+    - Returns the actual observations recieved for the driver vehicle
+    - Recommends a random acceleration and steering control to the driver
+    """
+
+    def get_action(self, obs: np.ndarray, dt: float) -> Action:
+        """ Overrides IDMDriverVehicle.get_action() """
+        action = super().get_action(obs, dt)
+        action[4] = utils.get_truncated_normal(0.0, 1.0, -1.0, 1.0)
+        action[5] = utils.get_truncated_normal(0.0, 1.0, -1.0, 1.0)
+        return action
+
+
+class RandomDiscreteAssistantPolicy(IDMAssistantPolicy):
+    """A Random Assistant policy for Discrete Assistant Action
+
+    Specifically:
+    - Returns the actual observations recieved for the driver vehicle
+    - Recommends a random acceleration and steering control to the driver
+    """
+    DISCRETE_ACTION_SPACE_SIZE = 6
+
+    NOOP = 0
+    UP = 1
+    DOWN = 2
+    """Integer values of each discrete action """
+
+    def get_action(self, obs: np.ndarray, dt: float) -> Action:
+        """ Overrides IDMDriverVehicle.get_action() """
+        action = np.full(self.DISCRETE_ACTION_SPACE_SIZE, self.NOOP)
+        action[4] = np.random.choice([self.NOOP, self.UP, self.DOWN])
+        action[5] = np.random.choice([self.NOOP, self.UP, self.DOWN])
+        return action
+
+
 class RandomDriverPolicy(IDMDriverPolicy):
     """A Random driver policy """
 
@@ -472,3 +512,78 @@ class GuidedIDMDriverPolicy(IDMDriverPolicy):
             (1 - self.independence) * assistant_action
             + (self.independence * idm_action)
         )
+
+
+class ChangingGuidedIDMDriverPolicy(GuidedIDMDriverPolicy):
+    """A GuidedIDMDriverPolicy where the driver parameters can be re-sampled
+
+    How much the driver follows the assistant's suggestions versus relying on
+    the IDM driver model is controlled by the "independence" hyperparameter
+    """
+
+    INDEPENDENCE_DIST = utils.get_truncated_normal(
+        0.5, 0.25, 0.0, 1.0
+    )
+
+    def __init__(self,
+                 road: Road,
+                 position: Vector,
+                 *args,
+                 independence: float = 0.9,
+                 **kwargs):
+        super().__init__(road, position, *args, **kwargs)
+        self.independence = independence
+
+    def get_action(self, obs: np.ndarray, dt: float) -> Action:
+        """ Overrides IDMDriverVehicle.get_action() """
+        assistant_signal, other_vehicle_obs = self.parse_obs(obs)
+        self._update_dynamics(assistant_signal, dt)
+        idm_action = self._get_idm_action(other_vehicle_obs)
+        action = self._calc_action(assistant_signal[-2:], idm_action)
+        return action
+
+    def _calc_action(self,
+                     assistant_action: np.ndarray,
+                     idm_action: np.ndarray) -> np.ndarray:
+        return (
+            (1 - self.independence) * assistant_action
+            + (self.independence * idm_action)
+        )
+
+    @classmethod
+    def create_from(cls, vehicle: Vehicle, **kwargs) -> "IDMDriverPolicy":
+        """
+        Create a new vehicle from an existing one.
+
+        The vehicle dynamics are copied, other properties are default.
+
+        :param vehicle: a vehicle
+        :return: a new vehicle at the same dynamical state
+        """
+        driver_config = deepcopy(kwargs)
+        driver_config.update(sample_driver_config())
+
+        if kwargs.get("force_independent", False):
+            driver_config["independence"] = 1.0
+        else:
+            driver_config["independence"] = cls.INDEPENDENCE_DIST.rvs()
+
+        return cls(
+            road=vehicle.road,
+            position=vehicle.position,
+            heading=vehicle.heading,
+            speed=vehicle.speed,
+            **kwargs
+        )
+
+
+def driver_policy_factory(env, driver_config: dict) -> 'IDMDriverPolicy':
+    """Get the driver policy for given driver configuration """
+    if driver_config["type"] == "GuidedIDMDriverPolicy":
+        policy_cls = GuidedIDMDriverPolicy
+    elif driver_config["type"] == "ChangingGuidedIDMDriverPolicy":
+        policy_cls = ChangingGuidedIDMDriverPolicy
+    else:
+        raise ValueError(f"Unsupported Driver Type: {driver_config['type']}")
+
+    return policy_cls.create_from(env.vehicle, **driver_config)

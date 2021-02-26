@@ -16,15 +16,19 @@ FILENAME = osp.splitext(__file__)[0]
 
 NUM_CPUS = max(1, len(os.sched_getaffinity(0)) - 4)
 
-ASSISTANTS = AVAILABLE_DRIVER_TYPES + ['random']
-DRIVERS = AVAILABLE_DRIVER_TYPES
-INDEPENDENCES = [0.0, 0.5, 1.0]
+# ASSISTANTS = AVAILABLE_DRIVER_TYPES + ['random']
+# DRIVERS = AVAILABLE_DRIVER_TYPES
+ASSISTANTS = ['random']
+DRIVERS = ['random', 'changing']
+INDEPENDENCES = [0.0]
 NUM_EPISODES = 100
 SEED = 0
 NORMALIZE_OBS = False
 VERBOSE = False
 RENDER = False
 MANUAL = False
+DISCRETE = True
+FORCE_INDEPENDENT = True
 TIME_DELAY = 0.0
 
 
@@ -44,6 +48,8 @@ def create_run_args() -> List[utils.RunArgs]:
                     normalize_obs=NORMALIZE_OBS,
                     verbose=VERBOSE,
                     manual=MANUAL,
+                    discrete=DISCRETE,
+                    force_independent=FORCE_INDEPENDENT,
                     time_delay=TIME_DELAY
                 )
                 all_run_args.append(run_args)

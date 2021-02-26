@@ -7,11 +7,11 @@ from argparse import ArgumentParser, Namespace
 
 import numpy as np
 
-from bdgym.envs.driver_assistant.driver_types import get_driver_config
+from bdgym.envs.driver_assistant.driver_types import \
+    get_driver_config, AVAILABLE_DRIVER_TYPES
 from bdgym.envs.driver_assistant.fixed_driver_env import \
     FixedDriverDriverAssistantEnv
-from bdgym.envs.driver_assistant.policy import \
-    IDMAssistantPolicy, RandomDriverPolicy
+import bdgym.envs.driver_assistant.policy as policy
 
 
 Result = namedtuple(
@@ -45,6 +45,8 @@ RunArgs = namedtuple(
         "normalize_obs",
         "verbose",
         "manual",
+        "discrete",
+        "force_independent",
         "time_delay"
     ]
 )
@@ -72,7 +74,8 @@ def test_parser() -> ArgumentParser:
     parser.add_argument("-i", "--independence", type=float, default=0.0,
                         help="driver independence (default=0.0)")
     parser.add_argument("-d", "--driver_type", type=str, default="standard",
-                        help="see driver_types.py (default='standard')")
+                        help=(f"Can be one of {AVAILABLE_DRIVER_TYPES} or "
+                              "'changing' (default='standard')."))
     parser.add_argument("-a", "--assistant_type", type=str,
                         default="standard",
                         help=(
@@ -96,6 +99,11 @@ def test_parser() -> ArgumentParser:
                         help="Verbosity mode")
     parser.add_argument("-m", "--manual", action="store_true",
                         help="Manual control mode")
+    parser.add_argument("-dc", "--discrete", action="store_true",
+                        help="Use Discrete Assistant Action")
+    parser.add_argument("-fi", "--force_independent", action="store_true",
+                        help=("Ensure driver is independent "
+                              "(mainly used for 'changing' driver type)"))
     parser.add_argument("-t", "--time_delay", type=float, default=0.0,
                         help="inter-step time delay (default=0.0)")
     return parser
@@ -125,11 +133,20 @@ def get_configured_env(args: Union[Namespace, RunArgs], seed: int = None):
         env.seed(args.seed)
         np.random.seed(args.seed)
 
-    config = {
-        "driver_policy": {
+    if args.driver_type == "changing":
+        driver_policy = {
+            "type": "ChangingGuidedIDMDriverPolicy",
+            "force_independent": args.force_independent
+        }
+    else:
+        driver_policy = {
+            "type": "GuidedIDMDriverPolicy",
             "independence": args.independence,
             **get_driver_config(args.driver_type)
-        },
+        }
+
+    config = {
+        "driver_policy": driver_policy,
         "manual_control": False
     }
 
@@ -138,6 +155,9 @@ def get_configured_env(args: Union[Namespace, RunArgs], seed: int = None):
 
     if args.manual:
         config["manual_control"] = True
+        action_config["assistant"]["type"] = "AssistantDiscreteActionSpace"
+
+    if args.discrete:
         action_config["assistant"]["type"] = "AssistantDiscreteActionSpace"
 
     config["action"] = action_config
@@ -164,14 +184,18 @@ def get_configured_env(args: Union[Namespace, RunArgs], seed: int = None):
 
 
 def init_assistant(args: Union[Namespace, RunArgs],
-                   env: FixedDriverDriverAssistantEnv) -> IDMAssistantPolicy:
+                   env: FixedDriverDriverAssistantEnv
+                   ) -> policy.IDMAssistantPolicy:
     """Initialize assistant """
     kwargs = {}
     if args.assistant_type.lower() == 'random':
-        assistant_class = RandomDriverPolicy
+        if args.discrete:
+            assistant_class = policy.RandomDiscreteAssistantPolicy
+        else:
+            assistant_class = policy.RandomDriverPolicy
     else:
         kwargs.update(get_driver_config(args.assistant_type))
-        assistant_class = IDMAssistantPolicy
+        assistant_class = policy.IDMAssistantPolicy
 
     kwargs["normalize"] = True
     kwargs["action_ranges"] = \
