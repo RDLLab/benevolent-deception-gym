@@ -3,7 +3,7 @@
 Credit to the HighwayEnv Gym environment which this environment is built on top
 of: https://github.com/eleurent/highway-env
 """
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import numpy as np
 
@@ -133,6 +133,7 @@ class DriverAssistantEnv(HighwayEnv):
             np.zeros(self.action_type.assistant_space().shape),
             np.zeros(self.action_type.driver_space().shape)
         ]
+        self.assistant_deception: List[np.ndarray] = []
 
     def define_spaces(self) -> None:
         """Overrides Parent """
@@ -215,6 +216,7 @@ class DriverAssistantEnv(HighwayEnv):
             if self.config["manual_control"]:
                 self.action_type.assistant_act(None)
             else:
+                self._track_deception(action)
                 self.action_type.assistant_act(action)
             obs = self.observation_type.observe_driver()
         else:
@@ -255,6 +257,7 @@ class DriverAssistantEnv(HighwayEnv):
             np.zeros(self.action_type.driver_space().shape)
         ]
         self.action_type.reset()
+        self.assistant_deception = []
         return self.observation_type.observe()
 
     def render(self, mode: str = 'human') -> Optional[np.ndarray]:
@@ -266,6 +269,17 @@ class DriverAssistantEnv(HighwayEnv):
                 self.viewer.set_agent_display(self.agent_display)
 
         return super().render(mode)
+
+    def _track_deception(self, assistant_action: np.ndarray):
+        # Per Step Deception is the difference between what the assistant
+        # observed about the ego vehicle and what they communicated to the
+        # driver.
+        deception = np.zeros(4, dtype=np.float32)
+        # Ignore first 'presence' column
+        ego_vehicle_obs = self.last_assistant_obs[0, 1:]
+        # Ignore 'acceleration' and 'steering' actions
+        deception = np.absolute(ego_vehicle_obs - assistant_action[4:])
+        self.assistant_deception.append(deception)
 
     def _simulate(self, action: Optional[Action] = None) -> None:
         sim_freq = self.config["simulation_frequency"]
