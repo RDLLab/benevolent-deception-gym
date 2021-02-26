@@ -150,6 +150,12 @@ def init_athlete_policy(args: Union[Namespace, RunArgs]
             perception_influence=args.perception_influence,
             independence=args.independence
         )
+    if athlete_policy_cls == policy.RandomWeightedAthletePolicy:
+        # TODO
+        return athlete_policy_cls(
+            independence_mean=1.0,
+            independence_std=1e-6
+        )
     return athlete_policy_cls()
 
 

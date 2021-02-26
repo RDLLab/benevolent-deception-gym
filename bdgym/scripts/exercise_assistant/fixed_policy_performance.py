@@ -17,7 +17,7 @@ POLICY_PAIRS = [
 # Note 0.0 = 'obedient' and 1.0 = 'greedy'
 PERCEPT_INFLUENCES = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
 INDEPENDENCES = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
-NUM_EPISODES = 100
+NUM_EPISODES = 1000
 SEEDS = list(range(10))
 VERBOSE = False
 RENDER = ""
