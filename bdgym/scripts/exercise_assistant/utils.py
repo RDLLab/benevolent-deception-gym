@@ -12,6 +12,7 @@ import numpy as np
 
 import bdgym.envs.exercise_assistant as ea_env
 import bdgym.envs.exercise_assistant.policy as policy
+import bdgym.envs.scripts.script_utils as script_utils
 
 
 RESULTS_DIR = osp.join(

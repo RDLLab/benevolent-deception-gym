@@ -1,50 +1,49 @@
-"""Script for running evaluation of PPO versus fixed athlete policies """
+"""Script for training and evaluating PPO versus driver policies """
 import time
 import os.path as osp
 from typing import Tuple
+from pprint import pprint
 
 import numpy as np
 
 from stable_baselines3 import PPO
 
 import bdgym.scripts.drl_utils as drl_utils
-import bdgym.envs.exercise_assistant as ea_env
+import bdgym.envs.driver_assistant as da_env
 from bdgym.scripts.script_utils import create_dir
 import bdgym.scripts.script_utils as script_utils
-import bdgym.envs.exercise_assistant.policy as policy
-import bdgym.scripts.exercise_assistant.utils as utils
+import bdgym.scripts.driver_assistant.utils as utils
+from bdgym.envs.driver_assistant.driver_types import get_driver_config
 
 
 EVAL_RESULT_DIR = create_dir(
-    osp.join(utils.RESULTS_DIR, "sb3_ppo_random_fixed_athlete_perf"),
+    osp.join(utils.RESULTS_DIR, "sb3_ppo_changing_driver_perf"),
     make_new=True
 )
 EVAL_RESULTS_FILENAME = osp.join(EVAL_RESULT_DIR, "eval_results.tsv")
 
 print("EVAL_RESULT_DIR:", str(EVAL_RESULT_DIR))
 
-# PERCEPT_INFLUENCES = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
-# INDEPENDENCES = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]
-# ATHLETE_POLICY = 'weighted'
-PERCEPT_INFLUENCES = [0.0]
+
 INDEPENDENCES = [0.0]
-ATHLETE_POLICY = 'random_weighted'
+DRIVER_POLICIES = ['changing']
 NUM_EPISODES = 100
-SEEDS = list(range(3))
-VERBOSITY = 0
-RENDER = ""
+SEEDS = list(range(1))
+VERBOSITY = 1
+RENDER = False
 MANUAL = False
 DISCRETE = True
+FORCE_INDEPENDENT = False
 NUM_CPUS = 1
 
 # PPO Parameters
 POLICY = "MlpPolicy"
-TOTAL_TIMESTEPS = 1000000
+TOTAL_TIMESTEPS = 500000
 SAVE_FREQ = -1
-BATCH_STEPS = 512
-EVAL_FREQ = 10000
+BATCH_STEPS = 2048
+EVAL_FREQ = BATCH_STEPS*5
 SAVE_BEST = True
-N_EVAL_EPISODES = 30
+N_EVAL_EPISODES = 10
 N_FINAL_EVAL_EPISODES = 100
 PPO_KWARGS = {
     "gamma": 0.999, "ent_coef": 0.1
@@ -52,34 +51,66 @@ PPO_KWARGS = {
 
 
 def get_config_env(independence: float,
-                   perception_influence: float,
-                   seed: int = 0) -> ea_env.FixedAthleteExerciseAssistantEnv:
-    """Get the configured Fixed Athlete Exercise Assistant Env """
-    if ATHLETE_POLICY == 'weighted':
-        athlete_policy = policy.WeightedAthletePolicy(
-            perception_influence=perception_influence,
-            independence=independence
-        )
-    elif ATHLETE_POLICY == 'random_weighted':
-        athlete_policy = policy.RandomWeightedAthletePolicy()
-
-    env = ea_env.DiscreteFixedAthleteExerciseAssistantEnv(athlete_policy)
+                   driver_type: str,
+                   seed: int = 0) -> da_env.FixedDriverDriverAssistantEnv:
+    """Get the configured Driver Assistant Env """
+    env = da_env.FixedDriverDriverAssistantEnv()
     env.seed(seed)
+
+    if driver_type == "changing":
+        driver_policy = {
+            "type": "ChangingGuidedIDMDriverPolicy",
+            "force_independent": FORCE_INDEPENDENT
+        }
+    elif driver_type == 'random':
+        driver_policy = {
+            "type": "RandomDriverPolicy"
+        }
+    else:
+        driver_policy = {
+            "type": "GuidedIDMDriverPolicy",
+            "independence": independence,
+            **get_driver_config(driver_type)
+        }
+
+    config = {
+        "driver_policy": driver_policy,
+        "manual_control": False
+    }
+
+    action_config = env.config["action"]
+    action_config["clip"] = False
+
+    if DISCRETE:
+        action_config["assistant"]["type"] = "AssistantDiscreteActionSpace"
+
+    config["action"] = action_config
+
+    env.configure(config)
+    env.reset()
+
+    if VERBOSITY > 0:
+        print("\nFull Env Config:")
+        pprint(env.config)
+        print()
+
     return env
 
 
 def get_env_creation_fn(independence: float,
-                        perception_influence: float):
+                        driver_type: str):
     """Get the get_configured_env_fn """
     def get_config_env_fn(seed):
-        return get_config_env(independence, perception_influence, seed)
+        return get_config_env(independence, driver_type, seed)
     return get_config_env_fn
 
 
-def run_eval_episode(ppo_model, env) -> Tuple[float, int, bool, float]:
+def run_eval_episode(ppo_model: PPO,
+                     env: da_env.FixedDriverDriverAssistantEnv
+                     ) -> Tuple[float, int, bool, float]:
     """Run a single eval episode """
     obs = env.reset()
-    if RENDER != "":
+    if RENDER:
         env.render()
 
     done = False
@@ -89,48 +120,48 @@ def run_eval_episode(ppo_model, env) -> Tuple[float, int, bool, float]:
         action, _ = ppo_model.predict(obs, deterministic=True)
         obs, reward, done, _ = env.step(action)
         total_return += reward
-        if RENDER != "":
+        if RENDER:
             env.render()
         steps += 1
 
-    mean_deception = np.mean(env.assistant_deception)
-    return total_return, steps, env.athlete_overexerted(), mean_deception
+    mean_deception = np.mean(env.assistant_deception, axis=0)
+    collision = steps < env.config["duration"]
+    return total_return, steps, collision, mean_deception
 
 
 def eval_best(ppo_model,
               eval_env,
               independence: float,
-              perception_influence: float,
+              driver_type: str,
               seed: int) -> utils.Result:
     """Evaluate the best model """
     ep_returns = []
     ep_steps = []
-    ep_overexertions = []
+    ep_collisions = []
     ep_times = []
     ep_deceptions = []
     for _ in range(N_FINAL_EVAL_EPISODES):
         start_time = time.time()
-        total_reward, steps, overexerted, deception = run_eval_episode(
+        total_reward, steps, collision, deception = run_eval_episode(
             ppo_model, eval_env
         )
         ep_times.append(time.time() - start_time)
         ep_returns.append(total_reward)
         ep_steps.append(steps)
-        ep_overexertions.append(overexerted)
+        ep_collisions.append(collision)
         ep_deceptions.append(deception)
 
     result = utils.Result(
         assistant="PPO",
-        athlete=ATHLETE_POLICY,
+        driver=driver_type,
         independence=independence,
-        perception_influence=perception_influence,
         episodes=N_EVAL_EPISODES,
         seed=seed,
         return_mean=np.mean(ep_returns),
         return_std=np.std(ep_returns),
         steps_mean=np.mean(ep_steps),
         steps_std=np.std(ep_steps),
-        overexertion_prob=np.mean(ep_overexertions),
+        collision_prob=np.mean(ep_collisions),
         time_mean=np.mean(ep_times),
         time_std=np.std(ep_times),
         deception_mean=np.mean(ep_deceptions),
@@ -144,10 +175,10 @@ def eval_best(ppo_model,
 
 
 def perform_run(independence: float,
-                perception_influence: float,
+                driver_type: str,
                 seed: int) -> utils.Result:
     """Perform a single run """
-    get_config_env_fn = get_env_creation_fn(independence, perception_influence)
+    get_config_env_fn = get_env_creation_fn(independence, driver_type)
     env = drl_utils.get_env(get_config_env_fn, False, NUM_CPUS, seed)
 
     ppo_model = drl_utils.init_ppo_model(
@@ -159,14 +190,14 @@ def perform_run(independence: float,
         **PPO_KWARGS
     )
 
-    if ATHLETE_POLICY == 'weighted':
+    if driver_type == 'GuidedIDMDriverPolicy':
         log_name = (
-            f"eval_i{independence:.3f}_p{perception_influence:.3f}_s{seed}"
+            f"eval_GuidedIDMDriverPolicy_i{independence:.3f}_s{seed}"
         )
-    elif ATHLETE_POLICY == 'random_weighted':
-        log_name = f"eval_random_weighted_s{seed}"
+    elif driver_type == 'changing':
+        log_name = f"eval_changing_s{seed}"
     else:
-        log_name = f"eval_{ATHLETE_POLICY}_s{seed}"
+        log_name = f"eval_{driver_type}_s{seed}"
     result_dir = osp.join(EVAL_RESULT_DIR, log_name)
 
     eval_env = drl_utils.get_env(get_config_env_fn, True)
@@ -186,25 +217,25 @@ def perform_run(independence: float,
     eval_env = drl_utils.get_env(get_config_env_fn, True)
     best_model = drl_utils.load_best_model(PPO, result_dir, eval_env)
     result = eval_best(
-        best_model, eval_env, independence, perception_influence, seed
+        best_model, eval_env, independence, driver_type, seed
     )
     return result
 
 
 def main():
     """Run the evaluation """
-    num_runs = len(INDEPENDENCES) * len(PERCEPT_INFLUENCES) * len(SEEDS)
+    num_runs = len(INDEPENDENCES) * len(DRIVER_POLICIES) * len(SEEDS)
     count = 1
     for i in INDEPENDENCES:
-        for p in PERCEPT_INFLUENCES:
+        for d in DRIVER_POLICIES:
             for s in SEEDS:
                 print(
                     f"Performing run {count} / {num_runs} with "
                     f"independence={i:.3f} "
-                    f"perception_influence={p:.3f} "
+                    f"driver_type={d} "
                     f"seed={s}"
                 )
-                eval_result = perform_run(i, p, s)
+                eval_result = perform_run(i, d, s)
                 script_utils.append_result_to_file(
                     eval_result, EVAL_RESULTS_FILENAME, True
                 )

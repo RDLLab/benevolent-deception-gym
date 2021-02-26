@@ -1,4 +1,6 @@
 """Utility functions for running tests on BDGym autopilot env """
+import os
+import os.path as osp
 import time
 from pprint import pprint
 from typing import Tuple, Union
@@ -12,6 +14,13 @@ from bdgym.envs.driver_assistant.driver_types import \
 from bdgym.envs.driver_assistant.fixed_driver_env import \
     FixedDriverDriverAssistantEnv
 import bdgym.envs.driver_assistant.policy as policy
+
+
+RESULTS_DIR = osp.join(
+    osp.dirname(osp.abspath(__file__)), "results"
+)
+
+NUM_CPUS = max(1, len(os.sched_getaffinity(0)) - 4)
 
 
 Result = namedtuple(
@@ -28,7 +37,9 @@ Result = namedtuple(
         "steps_std",
         "collision_prob",
         "time_mean",
-        "time_std"
+        "time_std",
+        "deception_mean",
+        "deception_std"
     ]
 )
 
@@ -65,6 +76,10 @@ def display_result(result: Result):
     print(f"Mean steps = {result.steps_mean:.3f} +/- {result.steps_std:.3f}")
     print(f"Collision prob = {result.collision_prob:.3f}")
     print(f"Mean time = {result.time_mean:.3f} +/- {result.time_std:.3f}")
+    print(
+        f"Mean deception = {result.deception_mean:.3f} "
+        f"+/- {result.deception_std:.3f}"
+    )
     print(f"{'-'*60}\n")
 
 
@@ -138,6 +153,10 @@ def get_configured_env(args: Union[Namespace, RunArgs], seed: int = None):
             "type": "ChangingGuidedIDMDriverPolicy",
             "force_independent": args.force_independent
         }
+    elif args.driver_type == 'random':
+        driver_policy = {
+            "type": "RandomDriverPolicy"
+        }
     else:
         driver_policy = {
             "type": "GuidedIDMDriverPolicy",
@@ -204,7 +223,8 @@ def init_assistant(args: Union[Namespace, RunArgs],
 
 
 def run_episode(args: Union[Namespace, RunArgs],
-                env: FixedDriverDriverAssistantEnv) -> Tuple[float, int]:
+                env: FixedDriverDriverAssistantEnv
+                ) -> Tuple[float, int, bool, float]:
     """Run the env for a single episode"""
     obs = env.reset()
 
@@ -216,44 +236,49 @@ def run_episode(args: Union[Namespace, RunArgs],
 
     done = False
     total_return = 0.0
-    total_steps = 0
+    steps = 0
     while not done:
         action = assistant.get_action(obs, env.delta_time)
         obs, reward, done, _ = env.step(action)
         total_return += reward
-        total_steps += 1
+        steps += 1
 
         if args.render:
             env.render()
 
         time.sleep(args.time_delay)
-    return total_return, total_steps
+
+    mean_deception = np.mean(env.assistant_deception)
+    collision = steps < env.config["duration"]
+    return total_return, steps, collision, mean_deception
 
 
 def run(args: Union[Namespace, RunArgs]) -> Result:
     """Run FixedDriverDriverAssistantEnv """
     env = get_configured_env(args)
 
-    max_steps = env.config["duration"]
     display_freq = max(args.num_episodes // 10, 1)
 
     ep_returns = []
     ep_collisions = []
     ep_steps = []
     ep_times = []
+    ep_deceptions = []
     for e in range(args.num_episodes):
         start_time = time.time()
-        total_return, total_steps = run_episode(args, env)
+        total_return, steps, collision, deception = run_episode(args, env)
         ep_times.append(time.time() - start_time)
         ep_returns.append(total_return)
-        ep_steps.append(total_steps)
-        ep_collisions.append(int(total_steps < max_steps))
+        ep_steps.append(steps)
+        ep_collisions.append(collision)
+        ep_deceptions.append(deception)
 
         if args.verbose and e > 0 and e % display_freq == 0:
             print(
                 f"Episode {e} complete: "
-                f"return={total_return:.3f} steps={total_steps} "
-                f"collision={total_steps < max_steps} time={ep_times[-1]:.3f}"
+                f"return={total_return:.3f} steps={steps} "
+                f"collision={collision} time={ep_times[-1]:.3f} "
+                f"deception={deception:.3f}"
             )
 
     result = Result(
@@ -268,7 +293,9 @@ def run(args: Union[Namespace, RunArgs]) -> Result:
         steps_std=np.std(ep_steps),
         collision_prob=np.mean(ep_collisions),
         time_mean=np.mean(ep_times),
-        time_std=np.std(ep_times)
+        time_std=np.std(ep_times),
+        deception_mean=np.mean(ep_deceptions),
+        deception_std=np.std(ep_deceptions)
     )
 
     if args.verbose:
