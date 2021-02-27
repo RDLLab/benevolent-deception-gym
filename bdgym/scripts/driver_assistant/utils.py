@@ -78,8 +78,8 @@ def display_result(result: Result):
     print(f"Collision prob = {result.collision_prob:.3f}")
     print(f"Mean time = {result.time_mean:.3f} +/- {result.time_std:.3f}")
     print(
-        f"Mean deception = {result.deception_mean:.3f} "
-        f"+/- {result.deception_std:.3f}"
+        f"Mean deception = {utils.np_array_str(result.deception_mean)} "
+        f"+/- {utils.np_array_str(result.deception_std)}"
     )
     print(f"{'-'*60}\n")
 
@@ -144,6 +144,7 @@ def get_configured_env(independence: float,
                        discrete: bool,
                        verbosity: int,
                        seed: int = 0,
+                       manual: bool = False,
                        **kwargs) -> FixedDriverDriverAssistantEnv:
     """Get the configured Driver Assistant Env """
     env = FixedDriverDriverAssistantEnv()
@@ -167,18 +168,14 @@ def get_configured_env(independence: float,
 
     config = {
         "driver_policy": driver_policy,
-        "manual_control": False
+        "manual_control": manual
     }
 
     action_config = env.config["action"]
     action_config["clip"] = False
 
-    if discrete:
+    if discrete or manual:
         action_config["assistant"]["type"] = "AssistantDiscreteActionSpace"
-
-    if kwargs["manual"]:
-        action_config["assistant"]["type"] = "AssistantDiscreteActionSpace"
-        config["manual_control"] = True
 
     config["action"] = action_config
 
@@ -285,7 +282,7 @@ def run_episode(args: Union[Namespace, RunArgs],
 
         time.sleep(args.time_delay)
 
-    mean_deception = np.mean(env.assistant_deception)
+    mean_deception = np.mean(env.assistant_deception, axis=0)
     collision = steps < env.config["duration"]
     return total_return, steps, collision, mean_deception
 
@@ -310,12 +307,15 @@ def run(args: Union[Namespace, RunArgs]) -> Result:
         ep_collisions.append(collision)
         ep_deceptions.append(deception)
 
-        if args.verbosity and e > 0 and e % display_freq == 0:
+        if args.verbosity and (
+                (e > 0 and e % display_freq == 0)
+                or args.num_episodes == 1
+        ):
             print(
                 f"Episode {e} complete: "
                 f"return={total_return:.3f} steps={steps} "
                 f"collision={collision} time={ep_times[-1]:.3f} "
-                f"deception={deception:.3f}"
+                f"deception={utils.np_array_str(deception)}"
             )
 
     result = Result(
@@ -331,8 +331,8 @@ def run(args: Union[Namespace, RunArgs]) -> Result:
         collision_prob=np.mean(ep_collisions),
         time_mean=np.mean(ep_times),
         time_std=np.std(ep_times),
-        deception_mean=np.mean(ep_deceptions),
-        deception_std=np.std(ep_deceptions)
+        deception_mean=np.mean(ep_deceptions, axis=0),
+        deception_std=np.std(ep_deceptions, axis=0)
     )
 
     if args.verbosity:

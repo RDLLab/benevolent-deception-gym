@@ -45,6 +45,7 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
             self.action_type.assistant_act(None)
         else:
             self.action_type.assistant_act(action)
+        self._track_deception()
 
         driver_obs = self.observation_type.observe_driver(
             normalize=False, absolute=True

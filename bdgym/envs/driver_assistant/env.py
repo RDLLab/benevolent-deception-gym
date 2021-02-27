@@ -217,8 +217,8 @@ class DriverAssistantEnv(HighwayEnv):
             if self.config["manual_control"]:
                 self.action_type.assistant_act(None)
             else:
-                self._track_deception(action)
                 self.action_type.assistant_act(action)
+            self._track_deception()
             obs = self.observation_type.observe_driver()
         else:
             self.steps += 1
@@ -271,15 +271,26 @@ class DriverAssistantEnv(HighwayEnv):
 
         return super().render(mode)
 
-    def _track_deception(self, assistant_action: np.ndarray):
+    def _track_deception(self):
         # Per Step Deception is the difference between what the assistant
         # observed about the ego vehicle and what they communicated to the
         # driver.
-        deception = np.zeros(4, dtype=np.float32)
+        assistant_action = self.action_type.last_assistant_action
+        assistant_action = \
+            self.action_type.assistant_action_type.normalize_action(
+                assistant_action
+            )
+
         # Ignore first 'presence' column
-        ego_vehicle_obs = self.last_assistant_obs[0, 1:]
+        norm_obs = self.observation_type.normalize_assistant_obs(
+            self.last_assistant_obs
+        )
+        ego_row = self.observation_type.ASSISTANT_EGO_ROW
+        ego_vehicle_obs = norm_obs[ego_row, 1:]
+
+        deception = np.zeros(4, dtype=np.float32)
         # Ignore 'acceleration' and 'steering' actions
-        deception = np.absolute(ego_vehicle_obs - assistant_action[4:])
+        deception = np.absolute(ego_vehicle_obs - assistant_action[:4])
         self.assistant_deception.append(deception)
 
     def _simulate(self, action: Optional[Action] = None) -> None:

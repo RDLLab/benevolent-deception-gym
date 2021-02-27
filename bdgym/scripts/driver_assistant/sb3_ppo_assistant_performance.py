@@ -26,7 +26,7 @@ print("EVAL_RESULT_DIR:", str(EVAL_RESULT_DIR))
 
 
 INDEPENDENCES = [0.0]
-DRIVER_POLICIES = ['GuidedIDMDriverPolicy']
+DRIVER_POLICIES = ['standard']
 NUM_EPISODES = 100
 SEEDS = list(range(1))
 VERBOSITY = 1
@@ -38,13 +38,15 @@ NUM_CPUS = 1
 
 # PPO Parameters
 POLICY = "MlpPolicy"
-TOTAL_TIMESTEPS = 500000
+# TOTAL_TIMESTEPS = 500000
+TOTAL_TIMESTEPS = 4096
 SAVE_FREQ = -1
 BATCH_STEPS = 2048
-EVAL_FREQ = BATCH_STEPS*5
+# EVAL_FREQ = BATCH_STEPS*5
+EVAL_FREQ = BATCH_STEPS
 SAVE_BEST = True
 N_EVAL_EPISODES = 10
-N_FINAL_EVAL_EPISODES = 100
+N_FINAL_EVAL_EPISODES = 10
 PPO_KWARGS = {
     "gamma": 0.999, "ent_coef": 0.1
 }
@@ -60,7 +62,8 @@ def get_env_creation_fn(independence: float,
             FORCE_INDEPENDENT,
             DISCRETE,
             VERBOSITY,
-            seed
+            seed,
+            MANUAL
         )
     return get_config_env_fn
 
@@ -124,8 +127,8 @@ def eval_best(ppo_model,
         collision_prob=np.mean(ep_collisions),
         time_mean=np.mean(ep_times),
         time_std=np.std(ep_times),
-        deception_mean=np.mean(ep_deceptions),
-        deception_std=np.std(ep_deceptions)
+        deception_mean=np.mean(ep_deceptions, axis=0),
+        deception_std=np.std(ep_deceptions, axis=0)
     )
 
     if VERBOSITY > 0:

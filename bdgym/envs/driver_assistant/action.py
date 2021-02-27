@@ -354,6 +354,16 @@ class AssistantDiscreteActionSpace(ActionType):
             )
         return norm_offset
 
+    def normalize_action(self, action: Action) -> Action:
+        """Convert action from absolute to proportional """
+        norm_interval = [-1.0, 1.0]
+        absolute_action = np.ones_like(action, dtype=np.float32)
+        for i, frange in enumerate(self.features_range.values()):
+            absolute_action[i] = utils.lmap(
+                action[i], frange, norm_interval
+            )
+        return absolute_action
+
 
 def assistant_action_factory(env: 'DriverAssistantEnv',
                              config: dict) -> ActionType:
