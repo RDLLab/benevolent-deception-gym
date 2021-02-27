@@ -26,7 +26,7 @@ print("EVAL_RESULT_DIR:", str(EVAL_RESULT_DIR))
 
 
 INDEPENDENCES = [0.0]
-DRIVER_POLICIES = ['changing']
+DRIVER_POLICIES = ['GuidedIDMDriverPolicy']
 NUM_EPISODES = 100
 SEEDS = list(range(1))
 VERBOSITY = 1
@@ -50,58 +50,18 @@ PPO_KWARGS = {
 }
 
 
-def get_config_env(independence: float,
-                   driver_type: str,
-                   seed: int = 0) -> da_env.FixedDriverDriverAssistantEnv:
-    """Get the configured Driver Assistant Env """
-    env = da_env.FixedDriverDriverAssistantEnv()
-    env.seed(seed)
-
-    if driver_type == "changing":
-        driver_policy = {
-            "type": "ChangingGuidedIDMDriverPolicy",
-            "force_independent": FORCE_INDEPENDENT
-        }
-    elif driver_type == 'random':
-        driver_policy = {
-            "type": "RandomDriverPolicy"
-        }
-    else:
-        driver_policy = {
-            "type": "GuidedIDMDriverPolicy",
-            "independence": independence,
-            **get_driver_config(driver_type)
-        }
-
-    config = {
-        "driver_policy": driver_policy,
-        "manual_control": False
-    }
-
-    action_config = env.config["action"]
-    action_config["clip"] = False
-
-    if DISCRETE:
-        action_config["assistant"]["type"] = "AssistantDiscreteActionSpace"
-
-    config["action"] = action_config
-
-    env.configure(config)
-    env.reset()
-
-    if VERBOSITY > 0:
-        print("\nFull Env Config:")
-        pprint(env.config)
-        print()
-
-    return env
-
-
 def get_env_creation_fn(independence: float,
                         driver_type: str):
     """Get the get_configured_env_fn """
     def get_config_env_fn(seed):
-        return get_config_env(independence, driver_type, seed)
+        return utils.get_configured_env(
+            independence,
+            driver_type,
+            FORCE_INDEPENDENT,
+            DISCRETE,
+            VERBOSITY,
+            seed
+        )
     return get_config_env_fn
 
 

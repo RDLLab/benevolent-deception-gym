@@ -31,22 +31,18 @@ from typing import TYPE_CHECKING, Tuple, List
 import numpy as np
 import pygame as pg
 
+from highway_env.road.graphics import WorldSurface
+from highway_env.envs.common.action import ActionType
+from highway_env.envs.common.graphics import EnvViewer, EventHandler
+
 from bdgym.envs.driver_assistant.action import (
     AssistantContinuousAction,
     AssistantContinuousOffsetAction,
     AssistantDiscreteActionSpace
 )
 
-from highway_env.road.graphics import WorldSurface
-from highway_env.envs.common.action import ActionType
-from highway_env.envs.common.graphics import EnvViewer, EventHandler
-
 if TYPE_CHECKING:
     from bdgym.envs.driver_assistant.env import DriverAssistantEnv
-
-
-# TODO
-# Add better labels to Agent display
 
 
 class DriverAssistantEnvViewer(EnvViewer):
@@ -58,7 +54,7 @@ class DriverAssistantEnvViewer(EnvViewer):
             if event.type == pg.QUIT:
                 self.env.close()
             self.sim_surface.handle_event(event)
-            if self.env.action_type:
+            if self.env.action_type and self.env.config["manual_control"]:
                 AssistantEventHandler.handle_event(self.env.action_type, event)
 
 
@@ -136,7 +132,9 @@ class AssistantActionDisplayer:
         )
 
     def _get_assistant_ego_obs(self) -> np.ndarray:
-        raw_obs = self.env.last_assistant_obs[0]
+        raw_obs = self.env.last_assistant_obs[
+            self.env.observation_type.ASSISTANT_EGO_ROW
+        ]
         obs = []
         for i in range(raw_obs.shape[0]):
             if i not in self.obs_ignore_idxs:

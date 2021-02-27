@@ -9,6 +9,7 @@ from argparse import ArgumentParser, Namespace
 
 import numpy as np
 
+import bdgym.envs.utils as utils
 from bdgym.envs.driver_assistant.driver_types import \
     get_driver_config, AVAILABLE_DRIVER_TYPES
 from bdgym.envs.driver_assistant.fixed_driver_env import \
@@ -54,7 +55,7 @@ RunArgs = namedtuple(
         "seed",
         "render",
         "normalize_obs",
-        "verbose",
+        "verbosity",
         "manual",
         "discrete",
         "force_independent",
@@ -110,8 +111,8 @@ def test_parser() -> ArgumentParser:
                         help="Render episodes")
     parser.add_argument("-no", "--normalize_obs", action="store_true",
                         help="Normalize Observations to be in [-1, 1]")
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Verbosity mode")
+    parser.add_argument("-v", "--verbosity", type=int, default=0,
+                        help="Verbosity mode (default=0)")
     parser.add_argument("-m", "--manual", action="store_true",
                         help="Manual control mode")
     parser.add_argument("-dc", "--discrete", action="store_true",
@@ -131,37 +132,37 @@ def parse_parser(parser: ArgumentParser) -> Namespace:
     """
     args = parser.parse_args()
 
-    if args.verbose:
+    if args.verbosity:
         print("\nUsing command line arguments:")
         pprint(args)
     return args
 
 
-def get_configured_env(args: Union[Namespace, RunArgs], seed: int = None):
-    """Get the configured env """
+def get_configured_env(independence: float,
+                       driver_type: str,
+                       force_independent: bool,
+                       discrete: bool,
+                       verbosity: int,
+                       seed: int = 0,
+                       **kwargs) -> FixedDriverDriverAssistantEnv:
+    """Get the configured Driver Assistant Env """
     env = FixedDriverDriverAssistantEnv()
+    env.seed(seed)
 
-    if seed is not None:
-        env.seed(seed)
-        np.random.seed(seed)
-    else:
-        env.seed(args.seed)
-        np.random.seed(args.seed)
-
-    if args.driver_type == "changing":
+    if driver_type == "changing":
         driver_policy = {
             "type": "ChangingGuidedIDMDriverPolicy",
-            "force_independent": args.force_independent
+            "force_independent": force_independent
         }
-    elif args.driver_type == 'random':
+    elif driver_type == 'random':
         driver_policy = {
             "type": "RandomDriverPolicy"
         }
     else:
         driver_policy = {
             "type": "GuidedIDMDriverPolicy",
-            "independence": args.independence,
-            **get_driver_config(args.driver_type)
+            "independence": independence,
+            **get_driver_config(driver_type)
         }
 
     config = {
@@ -172,34 +173,36 @@ def get_configured_env(args: Union[Namespace, RunArgs], seed: int = None):
     action_config = env.config["action"]
     action_config["clip"] = False
 
-    if args.manual:
-        config["manual_control"] = True
+    if discrete:
         action_config["assistant"]["type"] = "AssistantDiscreteActionSpace"
 
-    if args.discrete:
+    if kwargs["manual"]:
         action_config["assistant"]["type"] = "AssistantDiscreteActionSpace"
+        config["manual_control"] = True
 
     config["action"] = action_config
 
-    if not args.normalize_obs:
-        config["observation"] = {
-            "type": "StackedKinematicObservation",
-            "vehicles_count": 5,
-            "features": ["presence", "x", "y", "vx", "vy"],
-            "normalize": False,
-            "absolute": True,
-            "order": "sorted",
-            "stack_size": 1
-        }
+    obs_config = env.config["observation"]
+    if discrete:
+        obs_config["type"] = "DiscreteDriverAssistantObservation"
+
+    config["observation"] = obs_config
 
     env.configure(config)
     env.reset()
 
-    if args.verbose:
+    if verbosity > 0:
         print("\nFull Env Config:")
         pprint(env.config)
         print()
+
     return env
+
+
+def get_env_name(args: Union[Namespace, RunArgs]) -> str:
+    """Get the name of the environment being run """
+    env = get_configured_env(**vars(args))
+    return env.__class__.__name__
 
 
 def init_assistant(args: Union[Namespace, RunArgs],
@@ -222,6 +225,38 @@ def init_assistant(args: Union[Namespace, RunArgs],
     return assistant_class.create_from(env.vehicle, **kwargs)
 
 
+def get_unnormalized_obs(env: FixedDriverDriverAssistantEnv,
+                         obs: np.ndarray,
+                         assistant_obs: bool) -> np.ndarray:
+    """Get unnormalized environment observation.
+
+    Handles case where environment is already returing unnormalized obs.
+    If assistant_obs is False assumes it's driver observation.
+    """
+    if not env.observation_type.normalize:
+        return obs
+    if assistant_obs:
+        return env.observation_type.unnormalize_assistant_obs(obs)
+    return env.observation_type.unnormalize_driver_obs(obs)
+
+
+def get_absolute_obs(env: FixedDriverDriverAssistantEnv,
+                     obs: np.ndarray,
+                     assistant_obs: bool) -> np.ndarray:
+    """Get absolute environment observation.
+
+    Handles case where environment is already returning absolute obs.
+    If assistant_obs is False assumes it's driver observation.
+    """
+    if env.observation_type.absolute:
+        return obs
+    if assistant_obs:
+        return env.observation_type.convert_to_absolute_obs(
+            obs, env.observation_type.ASSISTANT_EGO_ROW
+        )
+    return env.observation_type.convert_to_absolute_obs(obs)
+
+
 def run_episode(args: Union[Namespace, RunArgs],
                 env: FixedDriverDriverAssistantEnv
                 ) -> Tuple[float, int, bool, float]:
@@ -238,6 +273,8 @@ def run_episode(args: Union[Namespace, RunArgs],
     total_return = 0.0
     steps = 0
     while not done:
+        obs = get_unnormalized_obs(env, obs, True)
+        obs = get_absolute_obs(env, obs, True)
         action = assistant.get_action(obs, env.delta_time)
         obs, reward, done, _ = env.step(action)
         total_return += reward
@@ -255,7 +292,7 @@ def run_episode(args: Union[Namespace, RunArgs],
 
 def run(args: Union[Namespace, RunArgs]) -> Result:
     """Run FixedDriverDriverAssistantEnv """
-    env = get_configured_env(args)
+    env = get_configured_env(**vars(args))
 
     display_freq = max(args.num_episodes // 10, 1)
 
@@ -273,7 +310,7 @@ def run(args: Union[Namespace, RunArgs]) -> Result:
         ep_collisions.append(collision)
         ep_deceptions.append(deception)
 
-        if args.verbose and e > 0 and e % display_freq == 0:
+        if args.verbosity and e > 0 and e % display_freq == 0:
             print(
                 f"Episode {e} complete: "
                 f"return={total_return:.3f} steps={steps} "
@@ -298,7 +335,7 @@ def run(args: Union[Namespace, RunArgs]) -> Result:
         deception_std=np.std(ep_deceptions)
     )
 
-    if args.verbose:
+    if args.verbosity:
         display_result(result)
 
     return result

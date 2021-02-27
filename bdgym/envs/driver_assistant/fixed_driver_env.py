@@ -9,8 +9,6 @@ from highway_env.envs.common.action import Action
 from highway_env.envs.common.abstract import Observation
 
 from bdgym.envs.driver_assistant.env import DriverAssistantEnv
-from bdgym.envs.driver_assistant.action import DriverAssistantAction
-from bdgym.envs.driver_assistant.observation import DriverAssistantObservation
 from bdgym.envs.driver_assistant.policy import \
     GuidedIDMDriverPolicy, driver_policy_factory
 
@@ -27,10 +25,7 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
 
     def define_spaces(self) -> None:
         """Overrides Parent """
-        self.observation_type = DriverAssistantObservation(
-            self, **self.config["observation"]
-        )
-        self.action_type = DriverAssistantAction(self, self.config["action"])
+        super().define_spaces()
         self.observation_space = self.observation_type.assistant_space()
         self.action_space = self.action_type.assistant_space()
 
@@ -51,7 +46,9 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
         else:
             self.action_type.assistant_act(action)
 
-        driver_obs = self.observation_type.observe_driver()
+        driver_obs = self.observation_type.observe_driver(
+            normalize=False, absolute=True
+        )
         dt = 1 / self.config["simulation_frequency"]
         driver_action = self.driver_policy.get_action(driver_obs, dt)
 

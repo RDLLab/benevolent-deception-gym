@@ -331,10 +331,10 @@ class AssistantDiscreteActionSpace(ActionType):
 
     def get_last_ego_obs(self) -> Observation:
         """Get the last assistant observation for ego vehicle """
-        last_obs = self.env.observation_type.get_last_assistant_frame()
+        last_obs = self.env.last_assistant_obs
         # include only first row which is the observation of controlled vehicle
         # also exclude first column, which indicated 'presence'
-        return last_obs[0, 1:]
+        return last_obs[self.env.observation_type.ASSISTANT_EGO_ROW, 1:]
 
     def get_normalized_offset(self) -> np.ndarray:
         """Get the current offset in normalized form (values in [-1.0, 1.0])

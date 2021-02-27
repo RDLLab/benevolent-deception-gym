@@ -2,10 +2,10 @@
 import os.path as osp
 from pprint import pprint
 
-from stable_baselines3.common.vec_env import SubprocVecEnv
-from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3 import PPO
 
 import bdgym.scripts.drl_utils as drl_utils
+import bdgym.scripts.driver_assistant.utils as utils
 from bdgym.envs.driver_assistant.fixed_driver_env import \
     FixedDriverDriverAssistantEnv
 
@@ -18,50 +18,15 @@ FILENAME = osp.splitext(__file__)[0]
 
 # TODO
 # Handle continuous vs discrete assistant actions
-# update the configuration to be correct
 
 
-def get_config_env(args, seed=0):
-    """Get the configured env """
-    env = FixedDriverDriverAssistantEnv()
-    env.seed(seed)
-
-    env_obs = env.config["observation"]
-    env_obs["stack_size"] = args.stack_size
-
-    env.configure({
-        "observation": env_obs,
-        "driver": {
-            "type": args.driver_type,
-            "independence": args.independence
-        },
-        "offroad_terminal": True
-    })
-
-    env.reset()
-    return env
-
-
-def make_env(args, rank, seed=0):
-    """Utility function for multiprocessed env. """
-    def _init():
-        env = get_config_env(args, seed + rank)
-        return env
-    set_random_seed(seed)
-    return _init
-
-
-def get_env(args, eval_env=False):
-    """Get the agent env """
-    if args.num_cpus == 1:
-        print("Using single environment")
-        env = get_config_env(args)
-    elif eval_env:
-        env = SubprocVecEnv([make_env(args, i) for i in range(1)])
-    else:
-        print(f"Running {args.num_cpus} envs in parallel")
-        env = SubprocVecEnv([make_env(args, i) for i in range(args.num_cpus)])
-    return env
+def get_env_creation_fn(args):
+    """Get the get_configured_env_fn """
+    def get_config_env_fn(seed):
+        kwargs = vars(args)
+        kwargs['seed'] = seed
+        return utils.get_configured_env(**kwargs)
+    return get_config_env_fn
 
 
 def main(args):
@@ -73,7 +38,8 @@ def main(args):
     print("Running baseline3 PPO using args:")
     pprint(args)
 
-    env = get_env(args)
+    get_config_env_fn = get_env_creation_fn(args)
+    env = drl_utils.get_env(get_config_env_fn, False, args.num_cpus, args.seed)
     if args.load_model == "":
         ppo_model = drl_utils.init_ppo_model(
             env,
@@ -84,14 +50,23 @@ def main(args):
             **{'gamma': 0.999, "ent_coef": 0.1}
         )
     else:
-        ppo_model = drl_utils.load_ppo_model(args.load_model, env)
+        ppo_model = drl_utils.load_model(PPO, args.load_model, env)
 
-    drl_utils.run_model(ppo_model, get_env(args, True), args.verbosity)
+    drl_utils.run_model(
+        ppo_model, drl_utils.get_env(get_config_env_fn, True), args.verbosity
+    )
+
+    this_filename = osp.splitext(__file__)[0]
+    env_name = utils.get_env_name(args)
+    log_name = (
+        f"{this_filename}_{env_name}_i{args.independence:.3f}"
+    )
+    result_dir = osp.join(utils.RESULTS_DIR, log_name)
 
     reset_num_timesteps = args.load_model == ""
     training_complete = args.total_timesteps <= 0
     while not training_complete:
-        eval_env = get_env(args, True)
+        eval_env = drl_utils.get_env(get_config_env_fn, True)
         drl_utils.train_model(
             ppo_model,
             total_timesteps=args.total_timesteps,
@@ -99,13 +74,29 @@ def main(args):
             save_frequency=args.save_frequency,
             eval_freq=args.batch_steps,
             reset_num_timesteps=reset_num_timesteps,
-            log_name=f"{FILENAME}_DriverAssistantEnv"
+            log_name=f"{FILENAME}_DriverAssistantEnv",
+            save_best=args.save_best,
+            result_dir=result_dir
         )
         reset_num_timesteps = False
         drl_utils.run_model(
-            ppo_model, get_env(args, True), args.verbosity, wait_for_user=True
+            ppo_model,
+            drl_utils.get_env(get_config_env_fn, True),
+            args.verbosity,
+            wait_for_user=True
         )
         training_complete = not drl_utils.continue_training()
+
+    if args.save_best:
+        print("Running Best model")
+        env = drl_utils.get_env(get_config_env_fn, True)
+        best_model = drl_utils.load_best_model(PPO, result_dir, env)
+        drl_utils.run_model(
+            best_model,
+            drl_utils.get_env(get_config_env_fn, True),
+            args.verbosity,
+            wait_for_user=True
+        )
 
 
 if __name__ == "__main__":
@@ -120,5 +111,10 @@ if __name__ == "__main__":
                         help="env simulation frequency (default=15)")
     parser.add_argument("-ss", "--stack_size", type=int, default=1,
                         help="number of observations to stack (default=1)")
+    parser.add_argument("-dc", "--discrete", action="store_true",
+                        help="use discrete assistant actions")
+    parser.add_argument("-fi", "--force_independent", action="store_true",
+                        help=("Ensure driver is independent "
+                              "(mainly used for 'changing' driver type)"))
     parser = drl_utils.get_ppo_argparse(parser)
     main(parser.parse_args())

@@ -169,12 +169,13 @@ class DriverAssistantEnv(HighwayEnv):
                         "x": [-max_x, max_x],
                         "y": [-max_y, max_y],
                         "vx": [-max_speed, max_speed],
-                        "vy": [-max_speed, max_speed]
+                        "vy": [-max_speed, max_speed],
+                        "acceleration": [-max_acc, max_acc],
+                        "steering": [-max_steering, max_steering]
                 },
                 "normalize": True,
                 "absolute": False,
-                "order": "sorted",
-                "stack_size": 1
+                "order": "sorted"
             },
             "action": {
                 "assistant": {
@@ -346,7 +347,7 @@ class DriverAssistantEnv(HighwayEnv):
     @property
     def last_assistant_obs(self) -> np.ndarray:
         """The last action performed by the assistant agent """
-        return self.observation_type.get_last_assistant_frame()
+        return self.observation_type.last_assistant_obs
 
     @property
     def delta_time(self) -> float:
