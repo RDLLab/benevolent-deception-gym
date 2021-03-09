@@ -45,7 +45,7 @@ setup(
     python_requires='>=3.7',
     project_urls={
         # 'Documentation': "https://networkattacksimulator.readthedocs.io",
-        'Source': "https://github.com/Jjschwartz/benevolent-deception-gym",
+        'Source': "https://github.com/RDLLab/benevolent-deception-gym",
     },
     classifiers=[
         'Development Status :: 3 - Alpha',
