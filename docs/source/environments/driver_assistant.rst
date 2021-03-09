@@ -1,3 +1,5 @@
+.. _driver_assistant:
+
 Driver Assistant
 ================
 

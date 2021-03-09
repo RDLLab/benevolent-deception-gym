@@ -25,6 +25,24 @@ Then next you will need to install via pip::
   $ pip install -e .
 
 
+Documentation
+~~~~~~~~~~~~~
+
+Before it can be viewed the documentation must first be built. Firstly, if not already done, make sure documentation dependencies are installed::
+
+  $ cd beneveolent-deception-gym
+  $ pip install -e .[docs]
+
+
+This should install the documentation dependencies, namely `Sphinx <https://www.sphinx-doc.org>`_. Once dependencies are installed the documentation can be built by running the following::
+
+  $ cd docs
+  $ make html
+
+
+This should build all the documentation using `Sphinx`. Once the build is complete the docs can be accessed by opening ``benevolent-deception-gym/docs/build/html/index.html`` in your browser.
+
+
 Authors
 -------
 

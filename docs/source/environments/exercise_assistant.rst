@@ -1,3 +1,4 @@
+.. _exercise_assistant:
 
 Exercise Assistant
 ==================
