@@ -9,7 +9,7 @@ from .fixed_athlete_env import (
 from .policy import (
     RandomWeightedAthletePolicy,
     ObedientAthletePolicy,
-    GreedyAthletePolicy
+    IndependentAthletePolicy
 )
 
 
@@ -53,13 +53,13 @@ register(
 )
 
 register(
-    id='ExerciseAssistantGA-v0',
+    id='ExerciseAssistantIA-v0',
     entry_point='bdgym.envs:DiscreteFixedAthleteExerciseAssistantEnv',
-    kwargs={'athlete_policy': GreedyAthletePolicy()}
+    kwargs={'athlete_policy': IndependentAthletePolicy()}
 )
 
 register(
-    id='ExerciseAssistantContinuousGA-v0',
+    id='ExerciseAssistantContinuousIA-v0',
     entry_point='bdgym.envs:FixedAthleteExerciseAssistantEnv',
-    kwargs={'athlete_policy': GreedyAthletePolicy()}
+    kwargs={'athlete_policy': IndependentAthletePolicy()}
 )

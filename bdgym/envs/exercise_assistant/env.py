@@ -15,7 +15,7 @@ class ExerciseAssistantEnv(gym.Env):
 
     Description:
         A multi-agent environment that involves an athlete performing an
-        exercise and a exercise assistant that provides feedback to the
+        exercise and a assistant that provides feedback to the
         athlete. Both agents share the common goal of the athlete completing
         as many reps of an exercise without the athlete over-exerting themself.
 
@@ -31,14 +31,14 @@ class ExerciseAssistantEnv(gym.Env):
              (either perform rep or end set)
 
         The key interesting aspect of this environment is the asymmetry of
-        information and control. The Exercise Assistant has perfect knowledge
+        information and control. The Assistant has perfect knowledge
         of the current state, i.e. via access to advanced sensors, while the
         athlete has only noisy observations of the current state. Meanwhile,
         the athlete has full direct control over the state of the environment,
-        while the exercise assistant can only control the state via the signals
+        while the assistant can only control the state via the signals
         it sends to the athlete. This creates an interesting dynamic which
         depends a lot on how much the athlete trusts their percieved energy
-        level versus what the exercise assistant is recommending.
+        level versus what the assistant is recommending.
 
     State:
         Athlete Energy Level: float in [0.0, 1.0]
@@ -54,9 +54,8 @@ class ExerciseAssistantEnv(gym.Env):
         Sets Completed = 0
 
     Transition:
-        Exercise Assistant:
-            The state is unchanged independent of the exercise-assistant
-            action.
+        Assistant:
+            The state is unchanged independent of the assistant action.
 
         Athlete:
             Perform Rep - athlete energy level is decreased by random amount
@@ -81,8 +80,8 @@ class ExerciseAssistantEnv(gym.Env):
         Num   Observation                           Min       Max
         0     Percieved Energy Level                0.0       1.0
         1     Proportion of sets complete           0.0       1.0
-        2     Exercise Assistant Energy Signal      0.0       1.0
-        3     Exercise Assistant Recommendation     0.0       1.0
+        2     Assistant Energy Signal               0.0       1.0
+        3     Assistant Recommendation              0.0       1.0
 
         Percieved Energy Level Observation is noisy with the difference from
         the true level randomly sampled from a normal distribution with
@@ -90,7 +89,7 @@ class ExerciseAssistantEnv(gym.Env):
 
         Proportion of sets complete is fully observed.
 
-        Observations #2 and #3 are the actions of the exercise assistant.
+        Observations #2 and #3 are the actions of the assistant.
 
     Actions:
         Type: Discrete(2)
@@ -107,7 +106,7 @@ class ExerciseAssistantEnv(gym.Env):
         1     Proportion of sets complete           0.0       1.0
         2     Athlete Action                        0.0       1.0
 
-        The exercise assistant recieves a perfect observation of the athlete
+        The assistant recieves a perfect observation of the athlete
         energy level, the proportion of sets complete along with the last
         action completed by the athlete (0.0 for PERFORM_REP and 1.0 for
         END_SET).
@@ -118,12 +117,12 @@ class ExerciseAssistantEnv(gym.Env):
         0     Energy Signal                         -1.0       1.0
         1     Recommendation                        -1.0       1.0
 
-        Energy Signal represents what the exercise assistant is communicating
+        Energy Signal represents what the assistant is communicating
         to the athlete about the athletes energy level.
 
-        Recommendation corresponds to what the exercise assistant recommends
-        the athlete should do: -1.0=perform rep, 1.0=end set. It can be thought
-        of as the probability that the athlete should end the set.
+        Recommendation corresponds to what the assistant recommends the athlete
+        should do: -1.0=perform rep, 1.0=end set. It can be thought of as the
+        probability that the athlete should end the set.
 
         Note, actions are linearly mapped from [-1.0, 1.0] to [0.0, 1.0] inside
         the environment (i.e. a recommendation action of 0.0, would correspond
@@ -235,8 +234,7 @@ class ExerciseAssistantEnv(gym.Env):
 
         The step function also returns the observation for the next agent after
         the current one performing the action. I.e. when the athlete performs
-        an action the observation returned is for the exercise assistant and
-        vice versa.
+        an action the observation returned is for the assistant and vice versa.
 
         Parameters
         ----------
@@ -385,11 +383,9 @@ class ExerciseAssistantEnv(gym.Env):
     def _validate_action(self, action: Union[np.ndarray, int]):
         if self.next_agent == self.ASSISTANT_IDX:
             assert isinstance(action, np.ndarray), \
-                (f"Exercise Assistant action must be a np.ndarray. '{action}'"
-                 " invalid.")
+                (f"Assistant action must be a np.ndarray. '{action}' invalid.")
             assert action.shape == (2,), \
-                ("Exercise assistant action shape invalid. "
-                 f"{action.shape} != (2,).")
+                ("Assistant action shape invalid. {action.shape} != (2,).")
         else:
             if isinstance(action, np.ndarray):
                 assert len(action) == 1, \

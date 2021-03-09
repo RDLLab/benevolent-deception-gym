@@ -183,7 +183,7 @@ class ObedientAthletePolicy(WeightedAthletePolicy):
         super().__init__(threshold, perception_influence, 0.0)
 
 
-class GreedyAthletePolicy(WeightedAthletePolicy):
+class IndependentAthletePolicy(WeightedAthletePolicy):
     """Athlete Policy that performs rep if percieved energy >= threshold """
 
     def __init__(self,
