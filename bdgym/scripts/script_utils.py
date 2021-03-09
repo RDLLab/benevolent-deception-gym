@@ -4,6 +4,8 @@ import datetime
 import os.path as osp
 from typing import Union, List, NamedTuple
 
+import numpy as np
+
 
 def create_dir(full_dir_path: str,
                make_new: bool = True,
@@ -49,9 +51,9 @@ def save_results(all_results: List[NamedTuple],
     """Save all results to file """
     if include_timestamp:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-        full_filename = osp.join(result_dir, f"{filename}_{timestamp}.csv")
+        full_filename = osp.join(result_dir, f"{filename}_{timestamp}.tsv")
     else:
-        full_filename = osp.join(result_dir, f"{filename}_{timestamp}.csv")
+        full_filename = osp.join(result_dir, f"{filename}_{timestamp}.tsv")
 
     print(f"\nSaving results to: {full_filename}")
 
@@ -85,6 +87,8 @@ def append_result_to_file(results: Union[List[NamedTuple], NamedTuple],
             for v in result._asdict().values():
                 if isinstance(v, float):
                     row.append(f"{v:.4f}")
+                elif isinstance(v, np.ndarray):
+                    row.append(np.array_str(v, precision=4, suppress_small=1))
                 else:
                     row.append(str(v))
             fout.write("\t".join(row) + "\n")

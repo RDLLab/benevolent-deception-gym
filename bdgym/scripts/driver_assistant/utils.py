@@ -289,7 +289,10 @@ def run_episode(args: Union[Namespace, RunArgs],
 
 def run(args: Union[Namespace, RunArgs]) -> Result:
     """Run FixedDriverDriverAssistantEnv """
-    env = get_configured_env(**vars(args))
+    if isinstance(args, Namespace):
+        env = get_configured_env(**vars(args))
+    else:
+        env = get_configured_env(**args._asdict())
 
     display_freq = max(args.num_episodes // 10, 1)
 

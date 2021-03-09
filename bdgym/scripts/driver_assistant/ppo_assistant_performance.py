@@ -2,7 +2,6 @@
 import time
 import os.path as osp
 from typing import Tuple
-from pprint import pprint
 
 import numpy as np
 
@@ -13,11 +12,10 @@ import bdgym.envs.driver_assistant as da_env
 from bdgym.scripts.script_utils import create_dir
 import bdgym.scripts.script_utils as script_utils
 import bdgym.scripts.driver_assistant.utils as utils
-from bdgym.envs.driver_assistant.driver_types import get_driver_config
 
 
 EVAL_RESULT_DIR = create_dir(
-    osp.join(utils.RESULTS_DIR, "sb3_ppo_changing_driver_perf"),
+    osp.join(utils.RESULTS_DIR, "sb3_ppo_assistant_perf"),
     make_new=True
 )
 EVAL_RESULTS_FILENAME = osp.join(EVAL_RESULT_DIR, "eval_results.tsv")
@@ -25,9 +23,8 @@ EVAL_RESULTS_FILENAME = osp.join(EVAL_RESULT_DIR, "eval_results.tsv")
 print("EVAL_RESULT_DIR:", str(EVAL_RESULT_DIR))
 
 
-INDEPENDENCES = [0.0]
-DRIVER_POLICIES = ['standard']
-NUM_EPISODES = 100
+INDEPENDENCES = [0.0, 1.0]
+DRIVER_POLICIES = ['standard', "changing"]
 SEEDS = list(range(1))
 VERBOSITY = 1
 RENDER = False
@@ -38,12 +35,10 @@ NUM_CPUS = 1
 
 # PPO Parameters
 POLICY = "MlpPolicy"
-# TOTAL_TIMESTEPS = 500000
-TOTAL_TIMESTEPS = 4096
+TOTAL_TIMESTEPS = 500000
 SAVE_FREQ = -1
 BATCH_STEPS = 2048
-# EVAL_FREQ = BATCH_STEPS*5
-EVAL_FREQ = BATCH_STEPS
+EVAL_FREQ = BATCH_STEPS*5
 SAVE_BEST = True
 N_EVAL_EPISODES = 10
 N_FINAL_EVAL_EPISODES = 10
@@ -153,9 +148,10 @@ def perform_run(independence: float,
         **PPO_KWARGS
     )
 
-    if driver_type == 'GuidedIDMDriverPolicy':
+    if driver_type in ["standard", "aggressive"]:
         log_name = (
-            f"eval_GuidedIDMDriverPolicy_i{independence:.3f}_s{seed}"
+            f"eval_GuidedIDMDriverPolicy_{driver_type}_"
+            f"i{independence:.3f}_s{seed}"
         )
     elif driver_type == 'changing':
         log_name = f"eval_changing_s{seed}"
@@ -189,8 +185,12 @@ def main():
     """Run the evaluation """
     num_runs = len(INDEPENDENCES) * len(DRIVER_POLICIES) * len(SEEDS)
     count = 1
-    for i in INDEPENDENCES:
-        for d in DRIVER_POLICIES:
+    for d in DRIVER_POLICIES:
+        if d in ["changing", "random"]:
+            independences = [0.0]
+        else:
+            independences = INDEPENDENCES
+        for i in independences:
             for s in SEEDS:
                 print(
                     f"Performing run {count} / {num_runs} with "

@@ -109,8 +109,6 @@ if __name__ == "__main__":
                         help="driver type (default='GuidedIDMDriverVehicle'")
     parser.add_argument("-f", "--simulation_frequency", type=int, default=15,
                         help="env simulation frequency (default=15)")
-    parser.add_argument("-ss", "--stack_size", type=int, default=1,
-                        help="number of observations to stack (default=1)")
     parser.add_argument("-dc", "--discrete", action="store_true",
                         help="use discrete assistant actions")
     parser.add_argument("-fi", "--force_independent", action="store_true",

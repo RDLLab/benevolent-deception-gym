@@ -6,54 +6,59 @@ import matplotlib.pyplot as plt
 import bdgym.scripts.plot_utils as plot_utils
 
 
-CONSTANT_ATHLETE_POLICIES = ['random', 'random_weighted']
+CONSTANT_DRIVER_POLICIES = ['random', 'standard', 'aggressive']
 
 
 POLICY_NAME_MAP = {
-    'discrete_donothing': "No Assistant",
     'random': 'Random',
-    'random_weighted': 'Sampled\nAthlete',
-    'weighted': 'Athlete',
-    'PPO': 'PPO'
+    'changing': 'Sampled\nDriver',
+    'standard': 'Standard\nDriver',
+    'aggressive': 'Aggressive\nDriver',
+    'PPO': 'PPO',
+    "None": "No Assistant",
 }
+
+
+DECEPTION_FEATURES = ['x', 'y', 'vx', 'vy']
 
 
 def plot_eval_return(ax, df):
     """Plot return for each athlete versus assistant """
     plot_kwargs = {
-        "x_key": "athlete",
+        "x_key": "driver_label",
         "y_key": "return_mean",
         "yerr_key": "return_std",
         "z_key": "assistant",
         "y_label": "Mean Return +/- Std",
-        "label_map": POLICY_NAME_MAP
+        "label_map": POLICY_NAME_MAP,
+        "z_labels": ["PPO", "None"]
     }
 
     bars, labels = plot_utils.plot_metric_bar(ax, df, **plot_kwargs)
     return bars, labels
 
 
-def plot_eval_overexertion(ax, df):
-    """Plot return versus independence """
+def plot_eval_collisions(ax, df):
+    """Plot return for each athlete versus assistant """
     plot_kwargs = {
-        "x_key": "athlete",
-        "y_key": "overexertion_prob",
+        "x_key": "driver_label",
+        "y_key": "collision_prob",
         "z_key": "assistant",
-        "y_label": "Overexertion Proportion",
-        "y_lims": (0.0, 1.0),
-        "label_map": POLICY_NAME_MAP
+        "y_label": "Collision Proportion",
+        "label_map": POLICY_NAME_MAP,
+        "z_labels": ["PPO", "None"]
     }
 
     bars, labels = plot_utils.plot_metric_bar(ax, df, **plot_kwargs)
     return bars, labels
 
 
-def plot_eval_deception(ax, df):
+def plot_eval_deception_feature(ax, df, feature):
     """Plot return versus independence """
     plot_kwargs = {
-        "x_key": "athlete",
-        "y_key": "deception_mean",
-        "yerr_key": "deception_std",
+        "x_key": "driver_label",
+        "y_key": f"deception_mean_{feature}",
+        "yerr_key": f"deception_std_{feature}",
         "z_key": "assistant",
         "y_label": "Mean Deception +/- Std",
         "y_lims": (0.0, 1.0),
@@ -61,22 +66,38 @@ def plot_eval_deception(ax, df):
     }
 
     bars, labels = plot_utils.plot_metric_bar(ax, df, **plot_kwargs)
+    ax.set_title(f"Feature = {feature}")
     return bars, labels
+
+
+def driver_independence_label(row):
+    """Returns combined driver-independence label given DF row """
+    driver = row['driver']
+    independence = row['independence']
+    if driver in ['random', 'changing']:
+        return driver
+    return f"{driver}\n{independence:.2f}"
 
 
 def main(args: Namespace):
     """Run plotting script """
     df = plot_utils.import_results(args.result_file)
+
+    # Combine driver and independence into a single column
+    df['driver_label'] = df.apply(
+        lambda row: driver_independence_label(row), axis=1
+    )
+
     # Take average over seeds
     avg_df = df.groupby(
-        ['assistant', 'athlete', 'independence']
+        ['assistant', 'driver_label']
     ).mean().reset_index()
 
-    fig, axs = plt.subplots(1, 3)
+    # fig, axs = plt.subplots(2, len(DECEPTION_FEATURES))
+    fig, axs = plt.subplots(1, 2)
 
     bars, labels = plot_eval_return(axs[0], avg_df)
-    plot_eval_overexertion(axs[1], avg_df)
-    plot_eval_deception(axs[2], avg_df)
+    plot_eval_collisions(axs[1], avg_df)
 
     fig.legend(
         bars,
@@ -87,7 +108,20 @@ def main(args: Namespace):
         framealpha=0.0,
     )
 
-    fig.tight_layout(w_pad=3, h_pad=2)
+    # fig.tight_layout(w_pad=3, h_pad=2)
+    fig.tight_layout()
+
+    dec_df = df[df['assistant'] != 'None']
+
+    dec_fig, dec_axs = plt.subplots(1, len(DECEPTION_FEATURES), sharey=True)
+    for i, feature in enumerate(DECEPTION_FEATURES):
+        plot_eval_deception_feature(dec_axs[i], dec_df, feature)
+
+    for ax in dec_axs[1:]:
+        ax.set_ylabel(None)
+
+    dec_fig.tight_layout()
+
     plt.subplots_adjust(bottom=0.2)
     plt.show()
 
