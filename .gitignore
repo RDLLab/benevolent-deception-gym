@@ -1,6 +1,11 @@
+# bdgym-agent specific
+# --------------------
+
 # Results dirs
 results
 
+# generic python ignores
+# ----------------------
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
