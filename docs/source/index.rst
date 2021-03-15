@@ -20,6 +20,7 @@ The Docs
    reference/index
    explanations/index
    community/index
+   bibliography/index
 
 
 How should I cite BDGym?

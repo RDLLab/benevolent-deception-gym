@@ -29,11 +29,11 @@ There are multiple versions of the `Exercise-Assistant` environment with each on
 1. ``ExerciseAssistant-v0`` = full multi-agent, discrete athlete and assistant actions
 2. ``ExerciseAssistantContinuous-v0`` = full multi-agent, discrete athlete actions, continuous assistant actions
 3. ``ExerciseAssistantHA-v0`` = Human Athlete model policy (with parameters re-sampled at the start of each episode), discrete assistant actions
-4. ``ExerciseAssistantHAContinuous-v0`` = Human athlete model policy (with parameters re-sampled at the start of each episode), continuous assistant actions
+4. ``ExerciseAssistantContinuousHA-v0`` = Human athlete model policy (with parameters re-sampled at the start of each episode), continuous assistant actions
 5. ``ExerciseAssistantOA-v0`` = Obedient Athlete model policy, discrete assistant actions
-6. ``ExerciseAssistantOAContinuous-v0`` = Obedient athlete model policy, continuous assistant actions
+6. ``ExerciseAssistantContinuousOA-v0`` = Obedient athlete model policy, continuous assistant actions
 7. ``ExerciseAssistantIA-v0`` = Independent Athlete model policy, discrete assistant actions
-8. ``ExerciseAssistantIAContinuous-v0`` = Human athlete model policy, continuous assistant actions
+8. ``ExerciseAssistantContinuousIA-v0`` = Independent athlete model policy, continuous assistant actions
 
 
 Athlete Models
@@ -79,7 +79,7 @@ Independent Athlete Model
 
 This is the same as the `Human Athlete Model` except that the `independence` parameter (`i`) is set to **1**, so that the athlete always performs the action they believe is best (i.e. `BA`). Notice though that the Assistant can still influence the athlete's decision based on the energy level they report to the athlete (i.e. `AE`).
 
-This policy is useful for testing whether the assistant can learn to decieve the athlete in to making the best decisions. The assistant can be deceptive (or not) via the energy level it communicates to the athlete.
+This policy is useful for testing whether the assistant can learn to decieve the athlete into making the best decisions. The assistant can be deceptive (or not) via the energy level it communicates to the athlete.
 
 
 State Space
