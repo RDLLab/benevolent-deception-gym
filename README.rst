@@ -1,7 +1,13 @@
-benevolent-deception-gym
+Benevolent Deception Gym
 ========================
 
-Multiagent environments that incoporate benevolent deception and implement Open AI Gym interface.
+Multiagent Open AI gym environments that incoporate benevolent deception.
+
+Environments
+~~~~~~~~~~~~
+
+1. `Exercise-Assistant`
+2. `Driver-Assistant`
 
 
 Credits

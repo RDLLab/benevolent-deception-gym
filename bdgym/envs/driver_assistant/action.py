@@ -187,8 +187,8 @@ class AssistantDiscreteActionSpace(ActionType):
 
     For the ['x', 'y', 'vx', 'vy'] action spaces the actions have the
     effect of shifting the current offset/distortion being applied to the
-    by a fixed amount (controlled by AssistantDiscreteActionSpace.STEP_SIZE
-    parameter, default is 0.1 of max range of feature).
+    observation by a fixed amount depending on the feature
+    (see the AssistantDiscreteActionSpace.STEP_SIZE_MAP for exact values).
 
     The 'acceleration' and 'steering' action space actions have the effect
     of recommending to the driver to steer and/or accelerate up, down, or
