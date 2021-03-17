@@ -180,13 +180,19 @@ class ExerciseAssistantEnv(gym.Env):
         self.render_athlete_info = render_athlete_info
 
         self.action_space = {
-            self.ASSISTANT_IDX: spaces.Box(low=0.0, high=1.0, shape=(2,)),
+            self.ASSISTANT_IDX: spaces.Box(
+                np.float32(0.0), np.float32(1.0), shape=(2,)
+            ),
             self.ATHLETE_IDX: spaces.Discrete(len(AthleteAction))
         }
 
         self.observation_space = {
-            self.ASSISTANT_IDX: spaces.Box(low=0.0, high=1.0, shape=(3,)),
-            self.ATHLETE_IDX: spaces.Box(low=0.0, high=1.0, shape=(4,))
+            self.ASSISTANT_IDX: spaces.Box(
+                np.float32(0.0), np.float32(1.0), shape=(3,)
+            ),
+            self.ATHLETE_IDX: spaces.Box(
+                np.float32(0.0), np.float32(1.0), shape=(4,)
+            )
         }
 
         self.state = (self.MAX_ENERGY, 0)
@@ -198,6 +204,9 @@ class ExerciseAssistantEnv(gym.Env):
 
         # Rendering
         self.viewer: Optional[EnvViewer] = None
+
+        # Reset to fill last obs_config
+        self.reset()
 
     def reset(self) -> np.ndarray:
         """Reset the environment
@@ -379,6 +388,16 @@ class ExerciseAssistantEnv(gym.Env):
         return isinstance(
             self.action_space[self.ASSISTANT_IDX], spaces.Discrete
         )
+
+    @property
+    def athlete_action_space(self) -> spaces.Space:
+        """The athlete's action space """
+        return self.action_space[self.ATHLETE_IDX]
+
+    @property
+    def assistant_action_space(self) -> spaces.Space:
+        """The assistant's action space """
+        return self.action_space[self.ASSISTANT_IDX]
 
     def _validate_action(self, action: Union[np.ndarray, int]):
         if self.next_agent == self.ASSISTANT_IDX:

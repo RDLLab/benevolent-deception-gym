@@ -77,12 +77,14 @@ class DriverAssistantObservation(ObservationType):
                 )
                 low[:, i] = frange[0]
                 high[:, i] = frange[1]
-            return spaces.Box(low=low, high=high, dtype=np.float32)
+            return spaces.Box(
+                low=np.float32(low), high=np.float32(high), dtype=np.float32
+            )
 
         return spaces.Box(
             shape=self.driver_shape,
-            low=self.NORM_OBS_LOW,
-            high=self.NORM_OBS_HIGH,
+            low=np.float32(self.NORM_OBS_LOW),
+            high=np.float32(self.NORM_OBS_HIGH),
             dtype=np.float32
         )
 
@@ -97,12 +99,14 @@ class DriverAssistantObservation(ObservationType):
                 )
                 low[:, i] = frange[0]
                 high[:, i] = frange[1]
-            return spaces.Box(low=low, high=high, dtype=np.float32)
+            return spaces.Box(
+                low=np.float32(low), high=np.float32(high), dtype=np.float32
+            )
 
         return spaces.Box(
             shape=self.assistant_shape,
-            low=self.NORM_OBS_LOW,
-            high=self.NORM_OBS_HIGH,
+            low=np.float32(self.NORM_OBS_LOW),
+            high=np.float32(self.NORM_OBS_HIGH),
             dtype=np.float32
         )
 

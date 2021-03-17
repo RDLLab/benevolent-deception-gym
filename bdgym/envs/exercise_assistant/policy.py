@@ -320,9 +320,9 @@ class ManualDiscreteAssistantPolicy(ManualAssistantPolicy):
 
 
 ATHLETE_POLICIES = {
-    'greedy': GreedyAthletePolicy,
     'random': RandomAthletePolicy,
     'obedient': ObedientAthletePolicy,
+    'independent': IndependentAthletePolicy,
     'weighted': WeightedAthletePolicy,
     'random_weighted': RandomWeightedAthletePolicy
 }

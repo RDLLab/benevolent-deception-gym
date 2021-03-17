@@ -6,6 +6,7 @@ of: https://github.com/eleurent/highway-env
 from typing import Optional, Tuple, List
 
 import numpy as np
+from gym import spaces
 
 from highway_env import utils
 from highway_env.road.lane import AbstractLane
@@ -190,7 +191,7 @@ class DriverAssistantEnv(HighwayEnv):
                     }
                 },
                 "driver": {
-                    "type": "ContinuousAction",
+                    "type": "DriverContinuousAction",
                     "features_range": {
                         "acceleration": [-max_acc, max_acc],
                         "steering": [-max_steering, max_steering]
@@ -240,7 +241,7 @@ class DriverAssistantEnv(HighwayEnv):
 
         self._last_reward = reward
         self._last_action[self.next_agent] = action
-        self.next_agent = (self.next_agent + 1) % (self.ASSISTANT_IDX + 1)
+        self.next_agent = (self.next_agent + 1) % 2
 
         return obs, reward, terminal, info
 
@@ -364,3 +365,13 @@ class DriverAssistantEnv(HighwayEnv):
     def delta_time(self) -> float:
         """The environment time step size """
         return 1 / self.config["simulation_frequency"]
+
+    @property
+    def assistant_action_space(self) -> spaces.Space:
+        """The assistant's action space """
+        return self.action_space[self.ASSISTANT_IDX]
+
+    @property
+    def driver_action_space(self) -> spaces.Space:
+        """The driver's action space """
+        return self.action_space[self.DRIVER_IDX]

@@ -9,36 +9,24 @@ from highway_env.envs.common.action import Action
 from highway_env.envs.common.abstract import Observation
 
 from bdgym.envs.driver_assistant.env import DriverAssistantEnv
-from bdgym.envs.driver_assistant.policy import \
-    GuidedIDMDriverPolicy, driver_policy_factory
+from bdgym.envs.driver_assistant.policy import driver_policy_factory
 
 
 class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
     """Driver Assistant Env where driver policy is fixed. """
 
-    def __init__(self, config: dict = None) -> None:
+    def __init__(self,
+                 driver_policy_config: dict,
+                 config: dict = None) -> None:
+        self.driver_policy_config = driver_policy_config
         super().__init__(config)
-        driver_config = self.config.get("driver_policy", {})
-        self.driver_policy = GuidedIDMDriverPolicy.create_from(
-            self.vehicle, **driver_config
-        )
+        self.driver_policy = driver_policy_factory(self, driver_policy_config)
 
     def define_spaces(self) -> None:
         """Overrides Parent """
         super().define_spaces()
         self.observation_space = self.observation_type.assistant_space()
         self.action_space = self.action_type.assistant_space()
-
-    def default_config(self) -> dict:
-        """Overrides Parent """
-        config = super().default_config()
-        config.update({
-            "driver_policy": {
-                "type": "GuidedIDMDriverPolicy",
-                "independence": 0.75
-            },
-        })
-        return config
 
     def step(self, action: Action) -> Tuple[Observation, float, bool, dict]:
         if self.config["manual_control"]:
@@ -81,6 +69,20 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
 
     def reset(self) -> Observation:
         obs = super().reset()
-        driver_config = self.config.get("driver_policy", {})
-        self.driver_policy = driver_policy_factory(self, driver_config)
+        self.driver_policy = driver_policy_factory(
+            self, self.driver_policy_config
+        )
         return obs
+
+
+class DiscreteFixedDriverDriverAssistantEnv(FixedDriverDriverAssistantEnv):
+    """Driver Assistant Env with discrete actions where driver policy is fixed
+    """
+
+    def default_config(self) -> dict:
+        config = super().default_config()
+        config['action']['assistant']['type'] = 'AssistantDiscreteAction'
+        # Driver action type is always continuous when using fixed policy
+        config['action']['driver']['type'] = 'DriverDiscreteAction'
+        config['observation']['type'] = 'DiscreteDriverAssistantObservation'
+        return config

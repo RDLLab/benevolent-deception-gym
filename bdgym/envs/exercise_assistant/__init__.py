@@ -12,6 +12,28 @@ from .policy import (
     IndependentAthletePolicy
 )
 
+EXERCISE_ASSISTANT_GYM_ENVS = [
+    'ExerciseAssistant-v0',
+    'ExerciseAssistantContinuous-v0',
+]
+"""List of names of registered Exercise-Assistant Multi-agent Gym Envs """
+
+FIXED_ATHLETE_EXERCISE_ASSISTANT_GYM_ENVS = [
+    'ExerciseAssistantHA-v0',
+    'ExerciseAssistantContinuousHA-v0',
+    'ExerciseAssistantOA-v0',
+    'ExerciseAssistantContinuousOA-v0',
+    'ExerciseAssistantIA-v0',
+    'ExerciseAssistantContinuousIA-v0',
+]
+"""List of names of registered Exercise-Assistant Gym Envs with fixed athlete
+   policy.
+"""
+
+ALL_EXERCISE_ASSISTANT_GYM_ENVS = \
+    EXERCISE_ASSISTANT_GYM_ENVS + FIXED_ATHLETE_EXERCISE_ASSISTANT_GYM_ENVS
+"""List of names of all registered Exercise-Assistant Gym Envs """
+
 
 # Exercise Assistant Env
 # ----------------------

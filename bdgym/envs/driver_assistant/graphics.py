@@ -38,7 +38,7 @@ from highway_env.envs.common.graphics import EnvViewer, EventHandler
 from bdgym.envs.driver_assistant.action import (
     AssistantContinuousAction,
     AssistantContinuousOffsetAction,
-    AssistantDiscreteActionSpace
+    AssistantDiscreteAction
 )
 
 if TYPE_CHECKING:
@@ -118,7 +118,7 @@ class AssistantActionDisplayer:
             )
         if isinstance(
                 assistant_action_type,
-                (AssistantContinuousOffsetAction, AssistantDiscreteActionSpace)
+                (AssistantContinuousOffsetAction, AssistantDiscreteAction)
         ):
             return (
                 "Current Offsets applied to Driver observation & "
@@ -147,7 +147,7 @@ class AssistantActionDisplayer:
             return assistant_action_type.last_action
         if isinstance(assistant_action_type, AssistantContinuousOffsetAction):
             return np.zeros(len(self.assistant_obs_parameters))
-        if isinstance(assistant_action_type, AssistantDiscreteActionSpace):
+        if isinstance(assistant_action_type, AssistantDiscreteAction):
             current_offset = assistant_action_type.current_offset
             last_action = assistant_action_type.last_action
             return np.concatenate([current_offset, last_action[4:]])
@@ -285,7 +285,7 @@ class AssistantEventHandler(EventHandler):
                      event: pg.event.EventType) -> None:
         """ Overrides parent """
         assistant_action_type = action_type.assistant_action_type
-        if isinstance(assistant_action_type, AssistantDiscreteActionSpace):
+        if isinstance(assistant_action_type, AssistantDiscreteAction):
             cls.handle_assistant_discrete_action_event(
                 assistant_action_type, event
             )
@@ -295,7 +295,7 @@ class AssistantEventHandler(EventHandler):
     @classmethod
     def handle_assistant_discrete_action_event(
             cls,
-            action_type: AssistantDiscreteActionSpace,
+            action_type: AssistantDiscreteAction,
             event: pg.event.EventType) -> None:
         """Event handler for Assistant Continuous Actions """
         if (

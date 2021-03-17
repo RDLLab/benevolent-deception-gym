@@ -579,12 +579,12 @@ class ChangingGuidedIDMDriverPolicy(GuidedIDMDriverPolicy):
 
 def driver_policy_factory(env, driver_config: dict) -> 'IDMDriverPolicy':
     """Get the driver policy for given driver configuration """
-    if driver_config["type"] == "GuidedIDMDriverPolicy":
+    if driver_config["type"] == "RandomDriverPolicy":
+        policy_cls = RandomDriverPolicy
+    elif driver_config["type"] == "GuidedIDMDriverPolicy":
         policy_cls = GuidedIDMDriverPolicy
     elif driver_config["type"] == "ChangingGuidedIDMDriverPolicy":
         policy_cls = ChangingGuidedIDMDriverPolicy
-    elif driver_config["type"] == "RandomDriverPolicy":
-        policy_cls = RandomDriverPolicy
     else:
         raise ValueError(f"Unsupported Driver Type: {driver_config['type']}")
 

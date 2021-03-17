@@ -78,7 +78,7 @@ class DiscreteExerciseAssistantEnv(ExerciseAssistantEnv):
             len(DiscreteAssistantAction)
         )
         self.observation_space[self.ASSISTANT_IDX] = spaces.Box(
-            low=0.0, high=1.0, shape=(4,)
+            np.float32(0.0), np.float32(1.0), shape=(4,), dtype=np.float32
         )
         self._current_offset = 0.0
 

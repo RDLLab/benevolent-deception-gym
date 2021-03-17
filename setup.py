@@ -3,7 +3,8 @@ from setuptools import setup, find_packages
 extras = {
     'docs': [
         'sphinx>=3.0',
-        'sphinx-rtd-theme>=0.4'
+        'sphinx-rtd-theme>=0.4',
+        'sphinxcontrib-bibtex>=2.2'
     ],
     'test': [
         'pytest>=5.4'

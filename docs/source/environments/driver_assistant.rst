@@ -28,7 +28,8 @@ There are multiple versions of the `Driver-Assistant` environment with each one 
 6. ``DriverAssistantContinuousOD-v0`` = Obedient driver model policy, continuous assistant actions
 7. ``DriverAssistantIA-v0`` = Independent driver model policy, discrete assistant actions
 8. ``DriverAssistantContinuousIA-v0`` = Independent driver model policy, continuous assistant actions
-
+9. ``DriverAssistantAggressiveID-v0`` = Independent driver model policy using 'aggressive' driver parameters, discrete assistant actions
+10. ``DriverAssistantContinuousAggressiveID-v0`` = Independent driver model policy using 'aggressive' driver parameters, continuous assistant actions
 
 
 Driver Models
