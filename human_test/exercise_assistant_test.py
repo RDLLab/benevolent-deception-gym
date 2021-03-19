@@ -32,13 +32,12 @@ from bdgym.envs.exercise_assistant.policy import ManualDiscreteAssistantPolicy
 PRACTICE_PERIOD = 10    # In Minutes
 PRACTICE_PERIOD_SEC = PRACTICE_PERIOD * 60
 
-EVAL_EPISODES = 2
-
-TEST_ENVS = [
-    "ExerciseAssistantOA-v0",
-    "ExerciseAssistantIA-v0",
-    "ExerciseAssistantHA-v0"
-]
+# Map from test env name to number of evaluation episodes
+TEST_ENVS = {
+    "ExerciseAssistantOA-v0": 3,
+    "ExerciseAssistantIA-v0": 3,
+    "ExerciseAssistantHA-v0": 5
+}
 
 LINE_BREAK = "=" * 60
 SMALL_LINE_BREAK = "-" * 30
@@ -170,13 +169,14 @@ def run_episode(env_name: str, ep_num: int) -> EvalEpResult:
 
 def run_env_eval(env_name: str, results_file: str) -> List[EvalEpResult]:
     """Run evaluation of an environment """
+    eval_episodes = TEST_ENVS[env_name]
     print("\n" + LINE_BREAK)
     print(f"Starting Evaluation for environment: {env_name}")
     print(LINE_BREAK)
-    print(f"Number of evaluation episodes = {EVAL_EPISODES}")
+    print(f"Number of evaluation episodes = {eval_episodes}")
 
     ep_results = []
-    for e in range(EVAL_EPISODES):
+    for e in range(eval_episodes):
         input(f"Press any ENTER to begin evaluation episode {e+1}.")
         print()
         result = run_episode(env_name, e)
@@ -248,7 +248,7 @@ def run_env_user_test(env_name: str,
     print(LINE_BREAK)
     print(
         f"This will involve a practice period of {PRACTICE_PERIOD} min "
-        f"followed by an evaluation over {EVAL_EPISODES} episodes."
+        f"followed by an evaluation over {TEST_ENVS[env_name]} episodes."
     )
     input("Press any ENTER to begin practice period.")
 
