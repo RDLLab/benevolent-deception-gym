@@ -15,7 +15,7 @@ class FixedAthleteExerciseAssistantEnv(ExerciseAssistantEnv):
     def __init__(self,
                  athlete_policy: AthletePolicy,
                  render_assistant_info: bool = True,
-                 render_athlete_info: bool = True):
+                 render_athlete_info: bool = False):
         self.athlete_policy = athlete_policy
         super().__init__(render_assistant_info, render_athlete_info)
         self.action_space = self.action_space[self.ASSISTANT_IDX]
@@ -41,7 +41,7 @@ class DiscreteFixedAthleteExerciseAssistantEnv(DiscreteExerciseAssistantEnv):
     def __init__(self,
                  athlete_policy: AthletePolicy,
                  render_assistant_info: bool = True,
-                 render_athlete_info: bool = True):
+                 render_athlete_info: bool = False):
         self.athlete_policy = athlete_policy
         super().__init__(render_assistant_info, render_athlete_info)
         self.action_space = self.action_space[self.ASSISTANT_IDX]

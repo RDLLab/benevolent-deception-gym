@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 import bdgym.envs.utils as utils
+from bdgym.envs.exercise_assistant.manual_control import \
+    AssistantEventHandler, GameQuitException
 from bdgym.envs.exercise_assistant.action import \
     AthleteAction, DiscreteAssistantAction
 from bdgym.envs.exercise_assistant.observation import \
@@ -253,8 +255,9 @@ class DoNothingDiscreteAssistantPolicy(AssistantPolicy):
 class ManualAssistantPolicy(AssistantPolicy):
     """Assistant Policy where actions controlled by manual keyboard control """
 
-    def __init__(self, print_obs: bool = True):
+    def __init__(self, print_obs: bool = True, event_driven: bool = True):
         self.print_obs = print_obs
+        self.event_driven = event_driven
 
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         if self.print_obs:
@@ -298,16 +301,27 @@ class ManualAssistantPolicy(AssistantPolicy):
 class ManualDiscreteAssistantPolicy(ManualAssistantPolicy):
     """Assistant Policy where actions controlled by manual keyboard control """
 
-    def get_action(self, obs: np.ndarray) -> DiscreteAssistantAction:
+    def get_action(self, obs: np.ndarray, env=None) -> DiscreteAssistantAction:
         if self.print_obs:
-            print(f"Observation: {assistant_obs_str(obs)}")
+            print(f"Observation: {assistant_obs_str(obs)}\n")
 
-        print("\nSelect Assistant Action from:")
+        if self.event_driven:
+            return self._get_event_action(env)
+        return self._get_terminal_action()
 
-        output = ["Actions:"]
+    def _get_event_action(self, env) -> DiscreteAssistantAction:
+        action = None
+        while action is None:
+            action = AssistantEventHandler.handle_discrete_events(env)
+        return action
+
+    def _get_terminal_action(self) -> DiscreteAssistantAction:
+        print("Select Assistant Action from:")
+
+        output = []
         for i in range(len(DiscreteAssistantAction)):
-            output.append(f"{i}={str(DiscreteAssistantAction(i))}")
-        print(" ".join(output))
+            output.append(f"  {i}={str(DiscreteAssistantAction(i))}")
+        print("\n".join(output))
 
         while True:
             try:

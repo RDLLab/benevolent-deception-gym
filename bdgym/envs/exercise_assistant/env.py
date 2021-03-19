@@ -143,6 +143,9 @@ class ExerciseAssistantEnv(gym.Env):
     ENERGY_COST_SCALE = 0.05
     """Scale of rep energy cost exponential distribution """
 
+    ENERGY_COST_BOUNDS = [0.01, 0.15]
+    """Bound for the energy cost of a single rep """
+
     ENERGY_RECOVERY_SCALE = 0.5
     """Scale of end of set energy recovery exponential distribution """
 
@@ -300,16 +303,24 @@ class ExerciseAssistantEnv(gym.Env):
         """
         assert mode in self.metadata['render.modes']
 
-        if self.viewer is None and mode == 'human':
-            self.viewer = EnvViewer(self)
-
         if mode == 'human':
+            if self.viewer is None:
+                self.viewer = EnvViewer(self)
             self.viewer.display()
         elif mode == 'asci':
             print(
                 f"State: Athlete-Energy={self.state[0]:.4f} "
                 f"Sets-Complete={self.state[1]:.4f}"
             )
+
+    def close(self) -> None:
+        """Close the environment.
+
+        Will close the environment viewer if it exists.
+        """
+        if self.viewer is not None:
+            self.viewer.close()
+        self.viewer = None
 
     def is_terminal(self, state: Tuple[float, int] = None) -> bool:
         """Check if state is terminal
@@ -418,10 +429,17 @@ class ExerciseAssistantEnv(gym.Env):
 
     def _perform_athlete_action(self, action: int) -> Tuple[float, int]:
         if action == AthleteAction.PERFORM_REP:
-            new_energy = self._apply_rep_cost(self.state[0])
+            cost = np.random.exponential(self.ENERGY_COST_SCALE)
+            cost = np.clip(cost, *self.ENERGY_COST_BOUNDS)
+            new_energy = np.clip(
+                self.state[0] - cost, self.MIN_ENERGY, self.MAX_ENERGY
+            )
             sets_done = self.state[1]
         else:
-            new_energy = self._apply_recovery(self.state[0])
+            recovery = np.random.exponential(self.ENERGY_RECOVERY_SCALE)
+            new_energy = np.clip(
+                self.state[0] + recovery, self.MIN_ENERGY, self.MAX_ENERGY
+            )
             sets_done = self.state[1] + 1
         return (new_energy, sets_done)
 
@@ -479,11 +497,3 @@ class ExerciseAssistantEnv(gym.Env):
         if energy + noise > previous_energy_obs:
             return previous_energy_obs
         return max(self.MIN_ENERGY, min(self.MAX_ENERGY, energy + noise))
-
-    def _apply_rep_cost(self, energy: float) -> float:
-        cost = np.random.exponential(self.ENERGY_COST_SCALE)
-        return max(self.MIN_ENERGY, min(self.MAX_ENERGY, energy - cost))
-
-    def _apply_recovery(self, energy: float) -> float:
-        recovery = np.random.exponential(self.ENERGY_RECOVERY_SCALE)
-        return max(self.MIN_ENERGY, min(self.MAX_ENERGY, energy + recovery))

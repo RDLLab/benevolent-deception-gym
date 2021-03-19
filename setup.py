@@ -40,6 +40,7 @@ setup(
         'numpy>=1.19',
         'pygame>=2.0',
         'scipy>=1.6',
+        'Pillow>=7.2',
         HIGHWAY_ENV_GIT
     ],
     extras_require=extras,

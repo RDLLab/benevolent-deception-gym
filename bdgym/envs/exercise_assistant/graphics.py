@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Tuple, Optional
 import numpy as np
 import pygame as pg
 
+
 if TYPE_CHECKING:
     from bdgym.envs.exercise_assistant.env import ExerciseAssistantEnv
 
@@ -18,16 +19,13 @@ EA_FIG_PREFIX = "EA_Fig"
 EA_FIG_EXT = ".png"
 
 
-# TODO
-# 4. Add text for action selection information
-
 class EnvViewer:
     """A viewer to render a Exercise Assistant Environment """
 
     RED = (255, 100, 100)
     GREEN = (50, 200, 0)
     BLUE = (100, 200, 255)
-    YELLOW = (200, 200, 0)
+    YELLOW = (255, 225, 0)
     BLACK = (60, 60, 60)
     WHITE = (255, 255, 255)
     PURPLE = (200, 0, 150)
@@ -73,6 +71,10 @@ class EnvViewer:
 
         self._draw()
         pg.display.flip()
+
+    def close(self) -> None:
+        """Close the pygame window """
+        pg.quit()
 
     def _draw(self, animate: bool = False) -> None:
         as_obs = self.env.last_assistant_obs
@@ -152,7 +154,7 @@ class FigureAnimationGraphics:
         # For Set count text
         self.font = pg.font.Font(None, self.FONT_SIZE)
         self.text_pos = (
-            int(self.width/2 - self._set_count_text(0).get_width()/2),
+            int(self.width/2 - self._set_count_text(0, False).get_width()/2),
             int(0.05*self.height)
         )
 
@@ -173,7 +175,7 @@ class FigureAnimationGraphics:
         else:
             self.surface.fill(self.BG_COLOR)
 
-        text_img = self._set_count_text(set_count)
+        text_img = self._set_count_text(set_count, overexerted)
         self.surface.blit(text_img, self.text_pos)
 
         if overexerted:
@@ -199,12 +201,17 @@ class FigureAnimationGraphics:
         self.anim_num = (self.anim_num + 1) % len(self.animation_imgs)
         return anim_img
 
-    def _set_count_text(self, set_count: int) -> pg.SurfaceType:
+    def _set_count_text(self, set_count: int,
+                        overexerted: bool) -> pg.SurfaceType:
         text = f"Set {set_count}"
-        return self.font.render(text, True, self.TEXT_COLOR, self.BG_COLOR)
+        if overexerted:
+            bg_color = self.OVEREXERTED_COLOR
+        else:
+            bg_color = self.BG_COLOR
+        return self.font.render(text, True, self.TEXT_COLOR, bg_color)
 
     def _end_set_text(self, set_count: int) -> pg.SurfaceType:
-        text = f"End Set {set_count}"
+        text = f"Set {set_count} Ended"
         return self.font.render(text, True, EnvViewer.GREEN, self.BG_COLOR)
 
     def _overexerted_text(self) -> pg.SurfaceType:
@@ -265,12 +272,12 @@ class AgentGraphics:
     @property
     def bar_width(self) -> float:
         """Width of bars in agent display """
-        return 0.1*self.width
+        return 0.8*self.width
 
     @property
     def bar_height(self) -> float:
         """Height of bars in agent display """
-        return 0.35*self.height
+        return 0.1*self.height
 
     @property
     def bar_title_height(self) -> float:
@@ -280,25 +287,25 @@ class AgentGraphics:
     @property
     def bar_gap(self) -> float:
         """Gap between bars in agent display """
-        return 0.1*self.width
+        return 0.15*self.height
 
     @property
     def first_bar_pos(self) -> Tuple[int, int]:
         """Position of the first bar in agent display """
-        return (0.2*self.width, 0.3*self.height)
+        return (0.1*self.width, 0.25*self.height)
 
     def get_bar_pos(self, bar_num: int) -> Tuple[int, int]:
         """Get position of bar """
         init_width, init_height = self.first_bar_pos
         return (
-            init_width + bar_num*self.bar_gap + bar_num*self.bar_width,
-            init_height
+            init_width,
+            init_height + bar_num*self.bar_gap + bar_num*self.bar_height
         )
 
     def get_bar_title_position(self, bar_num: int) -> Tuple[int, int]:
         """Height of bars in agent display """
-        title_width, _ = self.get_bar_pos(bar_num)
-        return (title_width, self.bar_title_height)
+        bar_x, bar_y = self.get_bar_pos(bar_num)
+        return (bar_x, bar_y-(0.05*self.height))
 
 
 class AssistantGraphics(AgentGraphics):
@@ -324,21 +331,37 @@ class AssistantGraphics(AgentGraphics):
                 width=None,
                 height=None,
                 position=self.get_bar_title_position(0),
-                text="E",
-                center_text=True,
-                font_size=30,
+                text="Athlete Energy",
+                center_text=False,
+                font_size=25,
                 bg_color=self.bg_color,
                 text_color=EnvViewer.BLACK
             )
+            energy_bar_pos = self.get_bar_pos(0)
             self.energy_bar = BarGraphic(
                 self.surface,
                 width=self.bar_width,
                 height=self.bar_height,
-                position=self.get_bar_pos(0),
+                position=energy_bar_pos,
                 min_value=0.0,
                 max_value=1.0,
                 bg_color=self.bg_color,
                 bar_fill_color=EnvViewer.GREEN
+            )
+
+            self.energy_value_text = TextGraphic(
+                self.surface,
+                width=self.bar_width,
+                height=None,
+                position=(
+                    energy_bar_pos[0],
+                    energy_bar_pos[1]+self.bar_height+0.01*self.height
+                ),
+                text="0.000",
+                center_text=False,
+                font_size=25,
+                bg_color=self.bg_color,
+                text_color=EnvViewer.BLACK
             )
 
         # Signal Offset Bar
@@ -348,21 +371,36 @@ class AssistantGraphics(AgentGraphics):
                 width=None,
                 height=None,
                 position=self.get_bar_title_position(1),
-                text="Off",
-                center_text=True,
-                font_size=30,
+                text="Applied Deception",
+                center_text=False,
+                font_size=25,
                 bg_color=self.bg_color,
                 text_color=EnvViewer.BLACK
             )
+            offset_bar_pos = self.get_bar_pos(1)
             self.offset_bar = OffsetBarGraphic(
                 self.surface,
                 width=self.bar_width,
                 height=self.bar_height,
-                position=self.get_bar_pos(1),
+                position=offset_bar_pos,
                 min_value=-1.0,
                 max_value=1.0,
                 bg_color=self.bg_color,
                 bar_fill_color=EnvViewer.GREEN
+            )
+            self.offset_value_text = TextGraphic(
+                self.surface,
+                width=self.bar_width,
+                height=None,
+                position=(
+                    offset_bar_pos[0],
+                    offset_bar_pos[1]+self.bar_height+0.01*self.height
+                ),
+                text="0.000",
+                center_text=False,
+                font_size=25,
+                bg_color=self.bg_color,
+                text_color=EnvViewer.BLACK
             )
         else:
             self.offset_bar = None
@@ -374,9 +412,13 @@ class AssistantGraphics(AgentGraphics):
             return
         self.energy_title.display()
         self.energy_bar.display(energy_obs)
+        self.energy_value_text.text = f"{energy_obs:.3f}"
+        self.energy_value_text.display()
         if self.display_offset:
             self.offset_title.display()
             self.offset_bar.display(offset_obs)
+            self.offset_value_text.text = f"{offset_obs:.3f}"
+            self.offset_value_text.display()
 
 
 class AthleteGraphics(AgentGraphics):
@@ -400,21 +442,36 @@ class AthleteGraphics(AgentGraphics):
                 width=None,
                 height=None,
                 position=self.get_bar_title_position(0),
-                text="PE",
-                center_text=True,
-                font_size=30,
+                text="Percieved Energy",
+                center_text=False,
+                font_size=25,
                 bg_color=self.bg_color,
                 text_color=EnvViewer.BLACK
             )
+            percieved_bar_pos = self.get_bar_pos(0)
             self.percieved_energy_bar = BarGraphic(
                 self.surface,
                 width=self.bar_width,
                 height=self.bar_height,
-                position=self.get_bar_pos(0),
+                position=percieved_bar_pos,
                 min_value=0.0,
                 max_value=1.0,
                 bg_color=self.bg_color,
                 bar_fill_color=EnvViewer.GREEN
+            )
+            self.percieved_energy_value = TextGraphic(
+                self.surface,
+                width=self.bar_width,
+                height=None,
+                position=(
+                    percieved_bar_pos[0],
+                    percieved_bar_pos[1]+self.bar_height+0.01*self.height
+                ),
+                text="0.000",
+                center_text=False,
+                font_size=25,
+                bg_color=self.bg_color,
+                text_color=EnvViewer.BLACK
             )
 
         # Assistant Signal Energy Bar
@@ -423,22 +480,37 @@ class AthleteGraphics(AgentGraphics):
             width=None,
             height=None,
             position=self.get_bar_title_position(1),
-            text="AE",
-            center_text=True,
-            font_size=30,
+            text="Assistant's Energy Signal",
+            center_text=False,
+            font_size=25,
             bg_color=self.bg_color,
             text_color=EnvViewer.BLACK
         )
+        assistant_bar_pos = self.get_bar_pos(1)
         self.assistant_energy_bar = BarGraphic(
             self.surface,
             width=self.bar_width,
             height=self.bar_height,
-            position=self.get_bar_pos(1),
+            position=assistant_bar_pos,
             min_value=0.0,
             max_value=1.0,
             bg_color=self.bg_color,
             bar_fill_color=EnvViewer.GREEN
         )
+        self.assistant_energy_value = TextGraphic(
+                self.surface,
+                width=self.bar_width,
+                height=None,
+                position=(
+                    assistant_bar_pos[0],
+                    assistant_bar_pos[1]+self.bar_height+0.01*self.height
+                ),
+                text="0.000",
+                center_text=False,
+                font_size=25,
+                bg_color=self.bg_color,
+                text_color=EnvViewer.BLACK
+            )
 
         # Assistant Recommendation Bar
         self.assistant_rcmd_title = TextGraphic(
@@ -468,8 +540,14 @@ class AthleteGraphics(AgentGraphics):
         if self.render_athlete_info:
             self.percieved_energy_title.display()
             self.percieved_energy_bar.display(obs[0])
+            self.percieved_energy_value.text = f"{obs[0]:.3f}"
+            self.percieved_energy_value.display()
+
         self.assistant_energy_title.display()
         self.assistant_energy_bar.display(obs[2])
+        self.assistant_energy_value.text = f"{obs[2]:.3f}"
+        self.assistant_energy_value.display()
+
         self.assistant_rcmd_title.display()
         if obs[3] > 0.5:
             self.assistant_rcmd_action.text = "END SET"
@@ -486,7 +564,7 @@ class BaseGraphic:
                  width: int,
                  height: int,
                  position: Tuple[int, int],
-                 bg_color: Tuple[int, int, int] = EnvViewer.BG_COLOR):
+                 bg_color: Optional[Tuple[int, int, int]] = None):
         self.parent_surface = parent_surface
         self.width = width
         self.height = height
@@ -515,7 +593,7 @@ class TextGraphic(BaseGraphic):
                  center_text: bool = False,
                  display_border: bool = False,
                  font_size: int = AthleteGraphics.FONT_SIZE,
-                 bg_color: Tuple[int, int, int] = EnvViewer.BG_COLOR,
+                 bg_color: Optional[Tuple[int, int, int]] = None,
                  text_color: Tuple[int, int, int] = EnvViewer.GREEN):
         self.center_text = center_text
         self.text = text
@@ -536,7 +614,8 @@ class TextGraphic(BaseGraphic):
         super().__init__(parent_surface, width, height, position, bg_color)
 
     def display(self, *args, **kwargs) -> None:
-        self.surface.fill(self.bg_color)
+        if self.bg_color:
+            self.surface.fill(self.bg_color)
 
         text_img = self.font.render(
             self.text, True, self.text_color, self.bg_color
@@ -598,8 +677,8 @@ class BarGraphic(BaseGraphic):
 
     def _draw_fill_rect(self, value: float):
         fill_proportion = value / (self.max_value - self.min_value)
-        rect_position = (0, (1-fill_proportion)*self.height)
-        rect_size = (self.width, fill_proportion*self.height)
+        rect_position = (0, 0)
+        rect_size = (fill_proportion*self.width, self.height)
         fill_rect = (*rect_position, *rect_size)
         pg.draw.rect(self.surface, self.bar_fill_color, fill_rect, 0)
 
@@ -608,17 +687,21 @@ class OffsetBarGraphic(BarGraphic):
     """A visualization of a offset bar """
 
     def _draw_fill_rect(self, value: float):
-        if value == 0.0:
-            rect = (0, self.height // 2, self.width, 1)
-            pg.draw.rect(self.surface, EnvViewer.BLACK, rect, 1)
-            return
+        if value != 0.0:
+            self._draw_offset_rect(value)
+        self._draw_mid_line()
 
+    def _draw_mid_line(self):
+        rect = (self.width // 2, 0, 1, self.height)
+        pg.draw.rect(self.surface, EnvViewer.BLACK, rect, 1)
+
+    def _draw_offset_rect(self, value: float):
         fill_proportion = abs(value) / (self.max_value - self.min_value)
-        rect_size = (self.width, fill_proportion*self.height)
+        rect_size = (fill_proportion*self.width, self.height)
         if value > 0.0:
-            rect_position = (0, self.height/2 - rect_size[1])
+            rect_position = (self.width / 2, 0)
         else:
-            rect_position = (0, self.height/2)
+            rect_position = (self.width / 2 - rect_size[0], 0)
 
         fill_rect = (*rect_position, *rect_size)
         pg.draw.rect(self.surface, self.bar_fill_color, fill_rect, 0)
