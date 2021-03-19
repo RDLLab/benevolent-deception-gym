@@ -89,8 +89,10 @@ class DiscreteActionType(ActionType):
         'y': 0.05,
         'vx': 0.05,
         'vy': 0.05,
-        'acceleration': 0.05,
-        'steering': 0.025
+        # 'acceleration': 0.05,
+        'acceleration': 1,
+        # 'steering': 0.025
+        'steering': 0.1
     }
     """This step size of each action
 
@@ -224,6 +226,9 @@ class DriverDiscreteAction(DiscreteActionType):
         """
         controls = self.get_controls(action)
         self.last_action = np.array(controls)
+        self.env.vehicle.act({
+            "acceleration": action[0], "steering": action[1]
+        })
 
 
 class DriverContinuousAction(ContinuousAction):
@@ -408,8 +413,6 @@ class AssistantDiscreteAction(DiscreteActionType):
         Assumes action is normalized
         """
         if action is not None:
-            # print("\nAction:", action)
-            # print("init current_offset:", self.current_offset)
             self._update_current_offset(action)
             recommendation = self.get_controls(action)
         else:
@@ -418,12 +421,8 @@ class AssistantDiscreteAction(DiscreteActionType):
         last_obs = self.get_last_ego_obs()
 
         abs_action = np.zeros(len(self.ASSISTANT_DISCRETE_ACTION_INDICES))
-        # print("init abs_action:", abs_action)
         abs_action[:len(self.OFFSET_FEATURES)] = self.current_offset + last_obs
-        # print("abs_action after obs:", abs_action)
         abs_action[len(self.OFFSET_FEATURES):] = recommendation
-        # print("abs_action after rcmd:", abs_action)
-        # print("Performing action:", abs_action)
         self.last_action = abs_action
 
     def _update_current_offset(self, action: Action) -> None:

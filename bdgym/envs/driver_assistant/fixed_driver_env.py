@@ -5,6 +5,8 @@ is a fixed policy.
 """
 from typing import Tuple
 
+from gym import spaces
+
 from highway_env.envs.common.action import Action
 from highway_env.envs.common.abstract import Observation
 
@@ -74,6 +76,16 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
         )
         return obs
 
+    @property
+    def assistant_action_space(self) -> spaces.Space:
+        """The assistant's action space """
+        return self.action_space
+
+    @property
+    def driver_action_space(self) -> spaces.Space:
+        """The driver's action space """
+        raise NotImplementedError("Not supported for Fixed Driver Env")
+
 
 class DiscreteFixedDriverDriverAssistantEnv(FixedDriverDriverAssistantEnv):
     """Driver Assistant Env with discrete actions where driver policy is fixed
@@ -86,3 +98,8 @@ class DiscreteFixedDriverDriverAssistantEnv(FixedDriverDriverAssistantEnv):
         config['action']['driver']['type'] = 'DriverDiscreteAction'
         config['observation']['type'] = 'DiscreteDriverAssistantObservation'
         return config
+
+    @property
+    def driver_action_space(self) -> spaces.Space:
+        """The driver's action space """
+        raise NotImplementedError("Not supported for Fixed Driver Env")

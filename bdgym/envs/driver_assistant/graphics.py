@@ -32,14 +32,14 @@ import numpy as np
 import pygame as pg
 
 from highway_env.road.graphics import WorldSurface
-from highway_env.envs.common.action import ActionType
-from highway_env.envs.common.graphics import EnvViewer, EventHandler
+from highway_env.envs.common.graphics import EnvViewer
 
 from bdgym.envs.driver_assistant.action import (
     AssistantContinuousAction,
     AssistantContinuousOffsetAction,
     AssistantDiscreteAction
 )
+from bdgym.envs.driver_assistant.manual_control import AssistantEventHandler
 
 if TYPE_CHECKING:
     from bdgym.envs.driver_assistant.env import DriverAssistantEnv
@@ -50,12 +50,13 @@ class DriverAssistantEnvViewer(EnvViewer):
 
     def handle_events(self) -> None:
         """Overrides parent."""
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                self.env.close()
-            self.sim_surface.handle_event(event)
-            if self.env.action_type and self.env.config["manual_control"]:
-                AssistantEventHandler.handle_event(self.env.action_type, event)
+        pass
+        # for event in pg.event.get():
+            # if event.type == pg.QUIT:
+            #     self.env.close()
+            # self.sim_surface.handle_event(event)
+            # if self.env.action_type and self.env.config["manual_control"]:
+            #   AssistantEventHandler.handle_event(self.env.action_type, event)
 
 
 class AssistantActionDisplayer:
@@ -252,70 +253,3 @@ class DashboardDisplay:
                   text: str,
                   text_color: Tuple[int, int, int]) -> pg.SurfaceType:
         return self.font.render(text, True, text_color, self.bg_color)
-
-
-class AssistantEventHandler(EventHandler):
-    """Event handler that includes assistant actions """
-
-    KEY_ACTION_MAP = {
-        pg.K_RIGHT: ("acceleration", True),
-        pg.K_LEFT: ("acceleration", False),
-        pg.K_UP: ("steering", False),
-        pg.K_DOWN: ("steering", True),
-        pg.K_q: ("x", True),
-        pg.K_a: ("x", False),
-        pg.K_w: ("y", True),
-        pg.K_s: ("y", False),
-        pg.K_e: ("vx", True),
-        pg.K_d: ("vx", False),
-        pg.K_r: ("vy", True),
-        pg.K_f: ("vy", False),
-    }
-    """Map from keyboard key to (action key, increase) tuple.
-    Where increase is a bool that specifies if keyboard key increases (True) or
-    decreases (False) the given action offset
-    """
-
-    CONTROL_ACTIONS = [pg.K_RIGHT, pg.K_LEFT, pg.K_UP, pg.K_DOWN]
-    """Action Keys corresponding to 'acceleration' and 'steering' action """
-
-    @classmethod
-    def handle_event(cls,
-                     action_type: ActionType,
-                     event: pg.event.EventType) -> None:
-        """ Overrides parent """
-        assistant_action_type = action_type.assistant_action_type
-        if isinstance(assistant_action_type, AssistantDiscreteAction):
-            cls.handle_assistant_discrete_action_event(
-                assistant_action_type, event
-            )
-        else:
-            super().handle_event(assistant_action_type, event)
-
-    @classmethod
-    def handle_assistant_discrete_action_event(
-            cls,
-            action_type: AssistantDiscreteAction,
-            event: pg.event.EventType) -> None:
-        """Event handler for Assistant Continuous Actions """
-        if (
-                event.type not in [pg.KEYDOWN, pg.KEYUP]
-                or event.key not in cls.KEY_ACTION_MAP
-        ):
-            return
-
-        action = np.full(
-            action_type.ASSISTANT_DISCRETE_ACTION_SPACE_SIZE,
-            action_type.NOOP,
-            dtype=np.float32
-        )
-        a_key, increase = cls.KEY_ACTION_MAP[event.key]
-        a_idx = action_type.ASSISTANT_DISCRETE_ACTION_INDICES[a_key]
-        if event.type == pg.KEYDOWN:
-            if increase:
-                action[a_idx] = action_type.UP
-            else:
-                action[a_idx] = action_type.DOWN
-        elif event.type == pg.KEYUP and event.key in cls.CONTROL_ACTIONS:
-            action[a_idx] = action_type.NOOP
-        action_type.act(action)
