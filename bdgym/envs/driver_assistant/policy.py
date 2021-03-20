@@ -13,7 +13,8 @@ from highway_env.vehicle.behavior import IDMVehicle
 from highway_env.road.road import Road, LaneIndex, Route
 
 import bdgym.envs.utils as utils
-from bdgym.envs.driver_assistant.driver_types import sample_driver_config
+from bdgym.envs.driver_assistant.driver_types import \
+    sample_driver_config, DRIVER_PARAM_LIMITS
 
 Observation = np.ndarray
 
@@ -169,6 +170,15 @@ class IDMDriverPolicy(IDMVehicle):
     def observation(self) -> np.ndarray:
         """Vehicle position and velocity in standard observation format """
         return np.array([1.0, *self.position, *self.velocity])
+
+    @property
+    def configuration(self) -> dict:
+        """The driver policy parameters """
+        config = {
+            param: self.__getattribute__(param)
+            for param in DRIVER_PARAM_LIMITS
+        }
+        return config
 
     def _get_idm_action(self, other_vehicle_obs: np.ndarray) -> np.ndarray:
         # Lateral: MOBIL
@@ -496,6 +506,13 @@ class GuidedIDMDriverPolicy(IDMDriverPolicy):
                  **kwargs):
         super().__init__(road, position, *args, **kwargs)
         self.independence = independence
+
+    @property
+    def configuration(self) -> dict:
+        """The driver policy parameters """
+        config = super().configuration
+        config["independence"] = self.independence
+        return config
 
     def get_action(self, obs: np.ndarray, dt: float) -> Action:
         """ Overrides IDMDriverVehicle.get_action() """

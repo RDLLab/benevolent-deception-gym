@@ -164,7 +164,7 @@ class DriverAssistantEnv(HighwayEnv):
         config.update({
             "observation": {
                 "type": "DriverAssistantObservation",
-                "vehicles_count": 5,
+                "vehicles_count": 10,
                 "features": ["presence", "x", "y", "vx", "vy"],
                 "features_range": {
                         "x": [-max_x, max_x],
@@ -203,7 +203,7 @@ class DriverAssistantEnv(HighwayEnv):
             "policy_frequency": config["simulation_frequency"],
             "duration": duration,
             "vehicles_density": 1,
-            "vehicles_count": 25,    # Default = 50
+            "vehicles_count": 50,    # Default = 50
             "reward_speed_range": [0, max_speed],
             "collision_reward": -1,
             "offroad_terminal": True,

@@ -86,7 +86,7 @@ def run_driver_assistant(env_name: str) -> Tuple[float, int, bool, float]:
     """
     env = gym.make(env_name)
 
-    obs = env.reset()
+    env.reset()
     env.render('human')
 
     total_return = 0.0
@@ -95,11 +95,8 @@ def run_driver_assistant(env_name: str) -> Tuple[float, int, bool, float]:
     start_time = time.time()
     while not done:
         action = AssistantEventHandler.get_discrete_action(env)
-        obs, rew, done, _ = env.step(action)
+        _, rew, done, _ = env.step(action)
         total_return += rew
-
-        # print(f"\nReward: {rew}")
-        # print(f"Done: {done}")
         steps += 1
 
         env.render('human')
