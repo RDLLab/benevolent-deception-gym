@@ -258,7 +258,7 @@ def run_env_user_test(env_name: str,
     print(LINE_BREAK)
     input("Practice period complete. Press ENTER to begin evaluation.")
 
-    eval_results_file = osp.join(results_dir, f"{env_name}_eval")
+    eval_results_file = osp.join(results_dir, f"{env_name2}_eval")
     eval_results = run_env_eval(env_name, eval_results_file)
 
     print(LINE_BREAK)
