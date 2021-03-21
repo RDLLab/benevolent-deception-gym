@@ -134,7 +134,7 @@ class ExerciseAssistantEnv(gym.Env):
         'render.modes': ['human', 'asci']
     }
 
-    MAX_SETS = 20
+    MAX_SETS = 10
     """Maximum number of sets the athlete can complete """
 
     INIT_ENERGY_RANGE = [0.75, 1.0]

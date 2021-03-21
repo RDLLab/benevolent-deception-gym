@@ -5,8 +5,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 import bdgym.envs.utils as utils
-from bdgym.envs.exercise_assistant.manual_control import \
-    AssistantEventHandler, GameQuitException
+from bdgym.envs.exercise_assistant.manual_control import AssistantEventHandler
 from bdgym.envs.exercise_assistant.action import \
     AthleteAction, DiscreteAssistantAction
 from bdgym.envs.exercise_assistant.observation import \
@@ -186,10 +185,15 @@ class ObedientAthletePolicy(WeightedAthletePolicy):
 
 
 class IndependentAthletePolicy(WeightedAthletePolicy):
-    """Athlete Policy that performs rep if percieved energy >= threshold """
+    """Athlete Policy that performs rep if percieved energy >= threshold
+
+    The threshold for this policy is intentionally set quite low so it's
+    necessary for the assistant to employ deception to avoid the athlete
+    overexerting themself.
+    """
 
     def __init__(self,
-                 threshold: float = 0.1,
+                 threshold: float = 0.05,
                  perception_influence: float = 0.5):
         super().__init__(threshold, perception_influence, 1.0)
 
