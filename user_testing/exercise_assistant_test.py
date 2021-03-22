@@ -25,8 +25,9 @@ import gym
 import numpy as np
 
 import bdgym    # noqa: F401 pylint: disable=unused-import
-from bdgym.envs.exercise_assistant.resources import display_keybindings
 from bdgym.envs.exercise_assistant.policy import ManualDiscreteAssistantPolicy
+from bdgym.envs.exercise_assistant.resources import \
+    display_keybindings, display_explanation
 
 
 PRACTICE_PERIOD = 10    # In Minutes
@@ -36,7 +37,7 @@ PRACTICE_PERIOD_SEC = PRACTICE_PERIOD * 60
 TEST_ENVS = {
     "ExerciseAssistantOA-v0": 3,
     "ExerciseAssistantIA-v0": 3,
-    "ExerciseAssistantHA-v0": 5
+    "ExerciseAssistantHA-v0": 10
 }
 
 LINE_BREAK = "=" * 60
@@ -119,15 +120,15 @@ def run_episode(env_name: str, ep_num: int) -> EvalEpResult:
     done = False
     start_time = time.time()
     while not done:
-        print(SMALL_LINE_BREAK)
-        print(f"ASSISTANT Step = {steps}")
-        print(SMALL_LINE_BREAK)
+        # print(SMALL_LINE_BREAK)
+        # print(f"ASSISTANT Step = {steps}")
+        # print(SMALL_LINE_BREAK)
         action = assistant_policy.get_action(obs, env)
         obs, rew, done, _ = env.step(action)
         total_return += rew
 
-        print(f"\nReward: {rew}")
-        print(f"Done: {done}")
+        # print(f"\nReward: {rew}")
+        # print(f"Done: {done}")
         steps += 1
 
         env.render('human')
@@ -258,7 +259,7 @@ def run_env_user_test(env_name: str,
     print(LINE_BREAK)
     input("Practice period complete. Press ENTER to begin evaluation.")
 
-    eval_results_file = osp.join(results_dir, f"{env_name2}_eval")
+    eval_results_file = osp.join(results_dir, f"{env_name}_eval")
     eval_results = run_env_eval(env_name, eval_results_file)
 
     print(LINE_BREAK)
@@ -279,6 +280,21 @@ def view_keybindings():
     display_keybindings()
 
 
+def view_info():
+    """View environment information """
+    answer = input(
+        "Would you like to view the explanation for the environment [y]/N? "
+    )
+    if answer.lower() != "n":
+        display_explanation()
+
+    answer = input(
+        "Would you like to view the keybindings for the environment [y]/N? "
+    )
+    if answer.lower() != "n":
+        display_keybindings()
+
+
 def run_user_test():
     """Run the full user test """
     print(LINE_BREAK)
@@ -293,7 +309,7 @@ def run_user_test():
         "There will be opportunities to have a break before each practice and "
         "evaluation period."
     )
-    view_keybindings()
+    view_info()
     input("Press any ENTER to begin the testing.")
 
     results_dir = create_subdir("exercise_assistant_test")

@@ -18,12 +18,12 @@ class AssistantEventHandler:
     """Event Handler for assistant actions """
 
     KEY_DISCRETE_ACTION_MAP = {
-        pg.K_q: DiscreteAssistantAction.INC_PERFORM_REP,
+        pg.K_q: DiscreteAssistantAction.DEC_PERFORM_REP,
         pg.K_w: DiscreteAssistantAction.NO_CHANGE_PERFORM_REP,
-        pg.K_e: DiscreteAssistantAction.DEC_PERFORM_REP,
-        pg.K_a: DiscreteAssistantAction.INC_END_SET,
+        pg.K_e: DiscreteAssistantAction.INC_PERFORM_REP,
+        pg.K_a: DiscreteAssistantAction.DEC_END_SET,
         pg.K_s: DiscreteAssistantAction.NO_CHANGE_END_SET,
-        pg.K_d: DiscreteAssistantAction.DEC_END_SET
+        pg.K_d: DiscreteAssistantAction.INC_END_SET
     }
     """Map from keyboard key to discrete assistant action """
 

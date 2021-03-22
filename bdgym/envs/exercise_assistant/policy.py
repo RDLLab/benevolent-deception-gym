@@ -187,13 +187,13 @@ class ObedientAthletePolicy(WeightedAthletePolicy):
 class IndependentAthletePolicy(WeightedAthletePolicy):
     """Athlete Policy that performs rep if percieved energy >= threshold
 
-    The threshold for this policy is intentionally set quite low so it's
-    necessary for the assistant to employ deception to avoid the athlete
-    overexerting themself.
+    The action performed is independent of the assistant action recommendation,
+    however the assistant can still influence the athletes action via the
+    energy signal it provides to the athlete.
     """
 
     def __init__(self,
-                 threshold: float = 0.05,
+                 threshold: float = 0.1,
                  perception_influence: float = 0.5):
         super().__init__(threshold, perception_influence, 1.0)
 

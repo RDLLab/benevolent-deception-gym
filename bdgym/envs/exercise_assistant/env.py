@@ -140,20 +140,26 @@ class ExerciseAssistantEnv(gym.Env):
     INIT_ENERGY_RANGE = [0.75, 1.0]
     """Range of initial energy distribution """
 
-    ENERGY_COST_SCALE = 0.05
+    ENERGY_COST_SCALE = 0.1
     """Scale of rep energy cost exponential distribution """
 
-    ENERGY_COST_BOUNDS = [0.01, 0.15]
+    ENERGY_COST_BOUNDS = [0.05, 0.15]
     """Bound for the energy cost of a single rep """
 
     ENERGY_RECOVERY_SCALE = 0.5
     """Scale of end of set energy recovery exponential distribution """
+
+    ENERGY_RECOVERY_BOUNDS = [0.25, 0.75]
+    """Bound for end of set energy recovery """
 
     ATHLETE_OBS_NOISE_MEAN = 0.05
     """Mean of athletes percieved energy level obs noise normal dist """
 
     ATHLETE_OBS_NOISE_VAR = 0.05
     """Variance of athletes percieved energy level obs noise normal dist """
+
+    ATHLETE_OBS_NOISE_BOUNDS = [-0.15, 0.15]
+    """Bounds of athletes percieved energy level obs noise distribution """
 
     ASSISTANT_IDX = 0
     """Index of coach agent (i.e. in turn and action and obs spaces) """
@@ -222,9 +228,15 @@ class ExerciseAssistantEnv(gym.Env):
         init_energy = np.random.uniform(*self.INIT_ENERGY_RANGE)
         self.state = (init_energy, 0)
         assistant_obs = np.array([init_energy, 0.0, 0.0], dtype=np.float32)
-        athlete_energy_obs = self._apply_athlete_noise(
-            init_energy, self.MAX_ENERGY
+        athlete_obs_noise = utils.get_truncated_normal(
+            self.ATHLETE_OBS_NOISE_MEAN,
+            self.ATHLETE_OBS_NOISE_VAR,
+            *self.ATHLETE_OBS_NOISE_BOUNDS
+        ).rvs()
+        athlete_energy_obs = np.clip(
+            init_energy + athlete_obs_noise, self.MIN_ENERGY, self.MAX_ENERGY
         )
+
         athlete_obs = np.array(
             [athlete_energy_obs, 0.0, athlete_energy_obs, 0.0],
             dtype=np.float32
@@ -284,6 +296,52 @@ class ExerciseAssistantEnv(gym.Env):
         self._last_reward = reward
         return obs, reward, done, info
 
+    def _validate_action(self, action: Union[np.ndarray, int]):
+        if self.next_agent == self.ASSISTANT_IDX:
+            assert isinstance(action, np.ndarray), \
+                (f"Assistant action must be a np.ndarray. '{action}' invalid.")
+            assert action.shape == (2,), \
+                ("Assistant action shape invalid. {action.shape} != (2,).")
+        else:
+            if isinstance(action, np.ndarray):
+                assert len(action) == 1, \
+                    (f"If athlete is np.ndarray it should be of length 1. "
+                     f"'{action}' invalid.")
+                action = action[0]
+            assert isinstance(action, (int, AthleteAction, np.integer)), \
+                f"Athlete action must be integer. '{action}' invalid."
+            assert 0 <= action < len(AthleteAction), \
+                f"Athlete action must be either 0 or 1. '{action}' invalid."
+
+    def _perform_athlete_action(self, action: int) -> Tuple[float, int]:
+        if action == AthleteAction.PERFORM_REP:
+            cost = np.random.exponential(self.ENERGY_COST_SCALE)
+            cost = np.clip(cost, *self.ENERGY_COST_BOUNDS)
+            new_energy = np.clip(
+                self.state[0] - cost, self.MIN_ENERGY, self.MAX_ENERGY
+            )
+            sets_done = self.state[1]
+        else:
+            recovery = np.random.exponential(self.ENERGY_RECOVERY_SCALE)
+            recovery = np.clip(recovery, *self.ENERGY_RECOVERY_BOUNDS)
+            new_energy = np.clip(
+                self.state[0] + recovery, self.MIN_ENERGY, self.MAX_ENERGY
+            )
+            sets_done = self.state[1] + 1
+        return (new_energy, sets_done)
+
+    def _get_assistant_obs(self, action: int) -> np.ndarray:
+        sets_completed = self.state[1] / self.MAX_SETS
+        return np.array(
+            [self.state[0], sets_completed, action], dtype=np.float32
+        )
+
+    def _lmap_assistant_action(self, action: np.ndarray) -> np.ndarray:
+        action = np.clip(action, -1.0, 1.0)
+        return utils.lmap_array(
+            action, [-1, 1.0], [self.MIN_ENERGY, self.MAX_ENERGY]
+        )
+
     def _track_deception(self, assistant_action: np.ndarray):
         # Per Step Deception is the difference between the energy level that
         # the assistant observed and the energy level it communicates with the
@@ -292,6 +350,28 @@ class ExerciseAssistantEnv(gym.Env):
         reported_energy = assistant_action[0]
         deception = abs(obs_energy - reported_energy)
         self.assistant_deception.append(deception)
+
+    def _get_athlete_obs(self, action: np.ndarray) -> np.ndarray:
+        sets_completed = self.state[1] / self.MAX_SETS
+
+        obs_noise = utils.get_truncated_normal(
+            self.ATHLETE_OBS_NOISE_MEAN,
+            self.ATHLETE_OBS_NOISE_VAR,
+            *self.ATHLETE_OBS_NOISE_BOUNDS
+        ).rvs()
+        percieved_energy = np.clip(
+            self.state[0] + obs_noise, self.MIN_ENERGY, self.MAX_ENERGY
+        )
+        if self.athlete_performed_rep():
+            percieved_energy = min(
+                self._last_obs[self.ATHLETE_IDX][0],
+                percieved_energy
+            )
+
+        return np.array(
+            [percieved_energy, sets_completed, action[0], action[1]],
+            dtype=np.float32
+        )
 
     def render(self, mode: str = 'human'):
         """Render the environment
@@ -378,6 +458,29 @@ class ExerciseAssistantEnv(gym.Env):
         """
         return self._last_action[self.ATHLETE_IDX] == AthleteAction.PERFORM_REP
 
+    def _get_reward(self, action: Union[np.ndarray, int]) -> float:
+        if self.next_agent == self.ATHLETE_IDX:
+            reward = 0.0
+            if self.state[0] <= self.MIN_ENERGY:
+                reward = self.OVEREXERTION_REWARD
+            elif action == AthleteAction.PERFORM_REP:
+                reward = self.REP_REWARD
+        else:
+            reward = self._last_reward
+        return reward
+
+    def _get_done(self, state: Tuple[float, int] = None) -> bool:
+        if state is None:
+            state = self.state
+        return state[0] <= self.MIN_ENERGY or state[1] >= self.MAX_SETS
+
+    def _get_info(self):
+        state_info = {
+            "athlete energy remaining": self.state[0],
+            "sets complete": self.state[1]
+        }
+        return state_info
+
     @property
     def set_count(self) -> int:
         """The current set number """
@@ -409,91 +512,3 @@ class ExerciseAssistantEnv(gym.Env):
     def assistant_action_space(self) -> spaces.Space:
         """The assistant's action space """
         return self.action_space[self.ASSISTANT_IDX]
-
-    def _validate_action(self, action: Union[np.ndarray, int]):
-        if self.next_agent == self.ASSISTANT_IDX:
-            assert isinstance(action, np.ndarray), \
-                (f"Assistant action must be a np.ndarray. '{action}' invalid.")
-            assert action.shape == (2,), \
-                ("Assistant action shape invalid. {action.shape} != (2,).")
-        else:
-            if isinstance(action, np.ndarray):
-                assert len(action) == 1, \
-                    (f"If athlete is np.ndarray it should be of length 1. "
-                     f"'{action}' invalid.")
-                action = action[0]
-            assert isinstance(action, (int, AthleteAction, np.integer)), \
-                f"Athlete action must be integer. '{action}' invalid."
-            assert 0 <= action < len(AthleteAction), \
-                f"Athlete action must be either 0 or 1. '{action}' invalid."
-
-    def _perform_athlete_action(self, action: int) -> Tuple[float, int]:
-        if action == AthleteAction.PERFORM_REP:
-            cost = np.random.exponential(self.ENERGY_COST_SCALE)
-            cost = np.clip(cost, *self.ENERGY_COST_BOUNDS)
-            new_energy = np.clip(
-                self.state[0] - cost, self.MIN_ENERGY, self.MAX_ENERGY
-            )
-            sets_done = self.state[1]
-        else:
-            recovery = np.random.exponential(self.ENERGY_RECOVERY_SCALE)
-            new_energy = np.clip(
-                self.state[0] + recovery, self.MIN_ENERGY, self.MAX_ENERGY
-            )
-            sets_done = self.state[1] + 1
-        return (new_energy, sets_done)
-
-    def _lmap_assistant_action(self, action: np.ndarray) -> np.ndarray:
-        action = np.clip(action, -1.0, 1.0)
-        return utils.lmap_array(
-            action, [-1, 1.0], [self.MIN_ENERGY, self.MAX_ENERGY]
-        )
-
-    def _get_athlete_obs(self, action: np.ndarray) -> np.ndarray:
-        sets_completed = self.state[1] / self.MAX_SETS
-        percieved_energy = self._apply_athlete_noise(
-            self.state[0], self._last_obs[self.ATHLETE_IDX][0]
-        )
-        return np.array(
-            [percieved_energy, sets_completed, action[0], action[1]],
-            dtype=np.float32
-        )
-
-    def _get_assistant_obs(self, action: int) -> np.ndarray:
-        sets_completed = self.state[1] / self.MAX_SETS
-        return np.array(
-            [self.state[0], sets_completed, action], dtype=np.float32
-        )
-
-    def _get_reward(self, action: Union[np.ndarray, int]) -> float:
-        if self.next_agent == self.ATHLETE_IDX:
-            reward = 0.0
-            if self.state[0] <= self.MIN_ENERGY:
-                reward = self.OVEREXERTION_REWARD
-            elif action == AthleteAction.PERFORM_REP:
-                reward = self.REP_REWARD
-        else:
-            reward = self._last_reward
-        return reward
-
-    def _get_done(self, state: Tuple[float, int] = None) -> bool:
-        if state is None:
-            state = self.state
-        return state[0] <= self.MIN_ENERGY or state[1] >= self.MAX_SETS
-
-    def _get_info(self):
-        state_info = {
-            "athlete energy remaining": self.state[0],
-            "sets complete": self.state[1]
-        }
-        return state_info
-
-    def _apply_athlete_noise(self,
-                             previous_energy_obs: float,
-                             energy: float) -> float:
-        noise = np.random.normal(
-            self.ATHLETE_OBS_NOISE_MEAN, self.ATHLETE_OBS_NOISE_VAR
-        )
-        if energy + noise > previous_energy_obs:
-            return previous_energy_obs
-        return max(self.MIN_ENERGY, min(self.MAX_ENERGY, energy + noise))

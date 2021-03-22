@@ -201,7 +201,8 @@ class FigureAnimationGraphics:
         self.anim_num = (self.anim_num + 1) % len(self.animation_imgs)
         return anim_img
 
-    def _set_count_text(self, set_count: int,
+    def _set_count_text(self,
+                        set_count: int,
                         overexerted: bool) -> pg.SurfaceType:
         text = f"Set {set_count}"
         if overexerted:
