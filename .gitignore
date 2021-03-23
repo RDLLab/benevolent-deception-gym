@@ -136,3 +136,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+user_testing/plotting/driver_assistant_results/
+
+user_testing/plotting/exercise_assistant_results/
