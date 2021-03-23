@@ -13,16 +13,12 @@ from highway_env.vehicle.behavior import IDMVehicle
 from highway_env.road.road import Road, LaneIndex, Route
 
 import bdgym.envs.utils as utils
+from bdgym.envs.driver_assistant.action import AssistantDiscreteAction
+from bdgym.envs.driver_assistant.vehicle import DriverAssistantVehicle
 from bdgym.envs.driver_assistant.driver_types import \
     sample_driver_config, DRIVER_PARAM_LIMITS
 
 Observation = np.ndarray
-
-
-class DriverAssistantVehicle(Vehicle):
-    """A faster vehicle """
-
-    MAX_SPEED = 50.
 
 
 class IDMDriverPolicy(IDMVehicle):
@@ -463,18 +459,32 @@ class RandomDiscreteAssistantPolicy(IDMAssistantPolicy):
     - Returns the actual observations recieved for the driver vehicle
     - Recommends a random acceleration and steering control to the driver
     """
-    DISCRETE_ACTION_SPACE_SIZE = 6
-
-    NOOP = 0
-    UP = 1
-    DOWN = 2
-    """Integer values of each discrete action """
 
     def get_action(self, obs: np.ndarray, dt: float) -> Action:
         """ Overrides IDMDriverVehicle.get_action() """
-        action = np.full(self.DISCRETE_ACTION_SPACE_SIZE, self.NOOP)
-        action[4] = np.random.choice([self.NOOP, self.UP, self.DOWN])
-        action[5] = np.random.choice([self.NOOP, self.UP, self.DOWN])
+        avail_actions = [
+            AssistantDiscreteAction.NOOP,
+            AssistantDiscreteAction.UP,
+            AssistantDiscreteAction.DOWN
+        ]
+        action = np.full(
+            AssistantDiscreteAction.ASSISTANT_DISCRETE_ACTION_SPACE_SIZE,
+            AssistantDiscreteAction.NOOP
+        )
+        action[4] = np.random.choice(avail_actions)
+        action[5] = np.random.choice(avail_actions)
+        return action
+
+
+class DoNothingDiscreteAssistantPolicy(IDMAssistantPolicy):
+    """Assistant policy that recommends no action and applies no deception """
+
+    def get_action(self, obs: np.ndarray, dt: float) -> Action:
+        """ Overrides IDMDriverVehicle.get_action() """
+        action = np.full(
+            AssistantDiscreteAction.ASSISTANT_DISCRETE_ACTION_SPACE_SIZE,
+            AssistantDiscreteAction.NOOP
+        )
         return action
 
 

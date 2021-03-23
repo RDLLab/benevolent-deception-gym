@@ -10,7 +10,7 @@ from highway_env.envs.common.action import \
     ContinuousAction, Action, action_factory, ActionType
 
 
-from bdgym.envs.driver_assistant.policy import DriverAssistantVehicle
+from bdgym.envs.driver_assistant.vehicle import DriverAssistantVehicle
 
 if TYPE_CHECKING:
     from bdgym.envs.driver_assistant.env import DriverAssistantEnv
