@@ -70,10 +70,8 @@ class DiscreteExerciseAssistantEnv(ExerciseAssistantEnv):
     OFFSET_MAX = 1.0
     """The maximum possible offset value """
 
-    def __init__(self,
-                 render_assistant_info: bool = True,
-                 render_athlete_info: bool = True):
-        super().__init__(render_assistant_info, render_athlete_info)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.action_space[self.ASSISTANT_IDX] = spaces.Discrete(
             len(DiscreteAssistantAction)
         )

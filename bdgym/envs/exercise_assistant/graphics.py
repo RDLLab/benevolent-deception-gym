@@ -36,7 +36,9 @@ class EnvViewer:
     def __init__(self,
                  env: 'ExerciseAssistantEnv',
                  screen_width: int = 900,
-                 screen_height: int = 400) -> None:
+                 screen_height: int = 400,
+                 save_images: bool = False,
+                 save_directory: Optional[str] = None) -> None:
         self.env = env
         pg.init()
         pg.display.set_caption("Exercise Assistant Env")
@@ -46,6 +48,9 @@ class EnvViewer:
         self.screen = pg.display.set_mode(self.panel_size)
         self.sim_surface = pg.Surface(self.panel_size, 0)
         self.clock = pg.time.Clock()
+        self.save_images = save_images
+        self.save_directory = save_directory
+        self.frame = 0
 
         self.assistant_graphics = AssistantGraphics(
             self.sim_surface,
@@ -99,6 +104,14 @@ class EnvViewer:
         self.athlete_graphics.display(self.env.last_athlete_obs)
         self.screen.blit(self.sim_surface, (0, 0))
 
+        if self.save_images and self.save_directory:
+            frame_num_str = self._get_frame_num_str()
+            pg.image.save(
+                self.sim_surface,
+                osp.join(self.save_directory, f"frame_{frame_num_str}.png")
+            )
+            self.frame += 1
+
     def _perform_rep(self) -> None:
         self.fig_graphics.reset()
         for _ in range(self.fig_graphics.animation_length):
@@ -119,6 +132,17 @@ class EnvViewer:
             self._draw(False)
             pg.display.update()
             self.clock.tick(self.fig_graphics.FRAME_RATE)
+
+    def _get_frame_num_str(self) -> str:
+        if self.frame < 10:
+            prefix_len = 3
+        elif self.frame < 100:
+            prefix_len = 2
+        elif self.frame < 1000:
+            prefix_len = 1
+        else:
+            prefix_len = 0
+        return f"{'0' * prefix_len}{self.frame}"
 
 
 class FigureAnimationGraphics:

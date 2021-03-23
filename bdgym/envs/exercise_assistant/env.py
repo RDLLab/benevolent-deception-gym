@@ -184,9 +184,13 @@ class ExerciseAssistantEnv(gym.Env):
 
     def __init__(self,
                  render_assistant_info: bool = True,
-                 render_athlete_info: bool = True):
+                 render_athlete_info: bool = True,
+                 save_images: bool = False,
+                 image_save_directory: Optional[str] = None):
         self.render_assistant_info = render_assistant_info
         self.render_athlete_info = render_athlete_info
+        self.save_images = save_images
+        self.image_save_directory = image_save_directory
 
         self.action_space = {
             self.ASSISTANT_IDX: spaces.Box(
@@ -385,7 +389,11 @@ class ExerciseAssistantEnv(gym.Env):
 
         if mode == 'human':
             if self.viewer is None:
-                self.viewer = EnvViewer(self)
+                self.viewer = EnvViewer(
+                    self,
+                    save_images=self.save_images,
+                    save_directory=self.image_save_directory
+                )
             self.viewer.display()
         elif mode == 'asci':
             print(
