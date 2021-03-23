@@ -85,6 +85,7 @@ def run_driver_assistant(env_name: str) -> Tuple[float, int, bool, float]:
         the name of Exercise-Assistant Env to run
     """
     env = gym.make(env_name)
+    env.config["manual_control"] = True
 
     env.reset()
     env.render('human')

@@ -19,9 +19,10 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
 
     def __init__(self,
                  driver_policy_config: dict,
-                 config: dict = None) -> None:
+                 config: dict = None,
+                 **kwargs) -> None:
         self.driver_policy_config = driver_policy_config
-        super().__init__(config)
+        super().__init__(config, **kwargs)
         self.driver_policy = driver_policy_factory(self, driver_policy_config)
 
     def define_spaces(self) -> None:

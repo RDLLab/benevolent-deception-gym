@@ -125,10 +125,16 @@ class DriverAssistantEnv(HighwayEnv):
     DRIVER_IDX = 1
     """Index of driver agent (i.e. in turn and action and obs spaces) """
 
-    def __init__(self, config: dict = None) -> None:
+    def __init__(self,
+                 config: dict = None,
+                 save_images: bool = False,
+                 image_save_directory: Optional[str] = None) -> None:
         super().__init__(config)
+        self.save_images = save_images
+        self.image_save_directory = image_save_directory
         self.next_agent = self.ASSISTANT_IDX
-        self.agent_display = None
+        self.viewer: Optional[DriverAssistantEnvViewer] = None
+        self.agent_display: Optional[AssistantActionDisplayer] = None
         self._last_reward = 0.0
         self._last_action = [
             np.zeros(self.action_type.assistant_space().shape),
@@ -265,7 +271,9 @@ class DriverAssistantEnv(HighwayEnv):
     def render(self, mode: str = 'human') -> Optional[np.ndarray]:
         """Overrides parent """
         if self.viewer is None:
-            self.viewer = DriverAssistantEnvViewer(self)
+            self.viewer = DriverAssistantEnvViewer(
+                self, self.save_images, self.image_save_directory
+            )
             if self.config["manual_control"] or self.config["action_display"]:
                 self.agent_display = AssistantActionDisplayer(self)
                 self.viewer.set_agent_display(self.agent_display)

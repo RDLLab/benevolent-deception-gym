@@ -10,8 +10,7 @@ signals and recommendations that equal to the observed values
 (in the case of the signals) or 0.0 (in case of the recommendations)
 plus the offset specified by the human user.
 
-The offset for each parameter: 'x', 'y', 'vx', 'vy', 'acceleration', and
-'acceleration', is controlled via a slider which can be increased or
+The offset for each parameter: 'x', 'y', 'vx', 'vy' can be increased or
 deacresed using the following keys:
 
   parameter    increase   decrease
@@ -26,7 +25,8 @@ deacresed using the following keys:
 Where Right, Left, Up, Down correspond to the arrow keys on the
 keyboard.
 """
-from typing import TYPE_CHECKING, Tuple, List
+import os.path as osp
+from typing import TYPE_CHECKING, Tuple, List, Optional
 
 import numpy as np
 import pygame as pg
@@ -39,7 +39,6 @@ from bdgym.envs.driver_assistant.action import (
     AssistantContinuousOffsetAction,
     AssistantDiscreteAction
 )
-from bdgym.envs.driver_assistant.manual_control import AssistantEventHandler
 
 if TYPE_CHECKING:
     from bdgym.envs.driver_assistant.env import DriverAssistantEnv
@@ -48,15 +47,40 @@ if TYPE_CHECKING:
 class DriverAssistantEnvViewer(EnvViewer):
     """A viewer to render a Driver Assistant environment """
 
+    def __init__(self,
+                 env: 'DriverAssistantEnv',
+                 save_images: bool = False,
+                 save_directory: Optional[str] = None):
+        super().__init__(env)
+        # Set class variable to false to ensure image saving is handled
+        # by this class not the parent EnvViewer class
+        # it's a bit of a hack, but its the simplest way to achieve this
+        self.SAVE_IMAGES = False
+        self.save_images = save_images
+        self.directory = save_directory
+
+    def display(self) -> None:
+        super().display()
+
+        if self.save_images and self.directory:
+            frame_num_str = "0"*(6-len(str(self.frame))) + str(self.frame)
+            pg.image.save(
+                self.sim_surface,
+                osp.join(self.directory, f"frame_{frame_num_str}.png")
+            )
+            self.frame += 1
+
     def handle_events(self) -> None:
         """Overrides parent."""
-        pass
-        # for event in pg.event.get():
-            # if event.type == pg.QUIT:
-            #     self.env.close()
-            # self.sim_surface.handle_event(event)
-            # if self.env.action_type and self.env.config["manual_control"]:
-            #   AssistantEventHandler.handle_event(self.env.action_type, event)
+        if self.env.config["manual_control"]:
+            # All events handled by
+            # bdgym.envs.driver_assistant.manual_control.AssistantEventHandler
+            return
+
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                self.env.close()
+            self.sim_surface.handle_event(event)
 
 
 class AssistantActionDisplayer:

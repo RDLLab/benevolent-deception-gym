@@ -105,7 +105,7 @@ class EnvViewer:
         self.screen.blit(self.sim_surface, (0, 0))
 
         if self.save_images and self.save_directory:
-            frame_num_str = self._get_frame_num_str()
+            frame_num_str = "0"*(6-len(str(self.frame))) + str(self.frame)
             pg.image.save(
                 self.sim_surface,
                 osp.join(self.save_directory, f"frame_{frame_num_str}.png")
@@ -132,17 +132,6 @@ class EnvViewer:
             self._draw(False)
             pg.display.update()
             self.clock.tick(self.fig_graphics.FRAME_RATE)
-
-    def _get_frame_num_str(self) -> str:
-        if self.frame < 10:
-            prefix_len = 3
-        elif self.frame < 100:
-            prefix_len = 2
-        elif self.frame < 1000:
-            prefix_len = 1
-        else:
-            prefix_len = 0
-        return f"{'0' * prefix_len}{self.frame}"
 
 
 class FigureAnimationGraphics:
