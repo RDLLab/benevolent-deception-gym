@@ -13,15 +13,11 @@ extras = {
 
 extras['all'] = [item for group in extras.values() for item in group]
 
-HIGHWAY_ENV_GIT = (
-    'highway-env @ '
-    'git+https://github.com/eleurent/highway-env@v1.0#egg=highway-env'
-)
 
 setup(
     name='bdgym',
     version='0.0.1',
-    # url="https://XXX.readthedocs.io",
+    url="https://github.com/RDLLab/benevolent-deception-gym",
     description=(
         "Multiagent environments that incoporate benevolent deception "
         "and implement the Open AI Gym interface"
@@ -41,12 +37,12 @@ setup(
         'pygame>=2.0',
         'scipy>=1.6',
         'Pillow>=7.2',
-        HIGHWAY_ENV_GIT
+        'highway-env==1.1'
     ],
     extras_require=extras,
     python_requires='>=3.7',
     project_urls={
-        # 'Documentation': "https://networkattacksimulator.readthedocs.io",
+        # 'Documentation': "https://benevolent-deception-gym.readthedocs.io",
         'Source': "https://github.com/RDLLab/benevolent-deception-gym",
     },
     classifiers=[

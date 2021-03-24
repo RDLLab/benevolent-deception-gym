@@ -5,4 +5,4 @@ from highway_env.vehicle.kinematics import Vehicle
 class DriverAssistantVehicle(Vehicle):
     """A faster vehicle """
 
-    MAX_SPEED = 50.
+    MAX_SPEED = 40.

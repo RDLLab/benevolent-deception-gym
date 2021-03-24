@@ -32,10 +32,7 @@ class FixedDriverDriverAssistantEnv(DriverAssistantEnv):
         self.action_space = self.action_type.assistant_space()
 
     def step(self, action: Action) -> Tuple[Observation, float, bool, dict]:
-        if self.config["manual_control"]:
-            self.action_type.assistant_act(None)
-        else:
-            self.action_type.assistant_act(action)
+        self.action_type.assistant_act(action)
         self._track_deception()
 
         driver_obs = self.observation_type.observe_driver(

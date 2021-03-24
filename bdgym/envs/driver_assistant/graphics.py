@@ -76,11 +76,7 @@ class DriverAssistantEnvViewer(EnvViewer):
             # All events handled by
             # bdgym.envs.driver_assistant.manual_control.AssistantEventHandler
             return
-
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                self.env.close()
-            self.sim_surface.handle_event(event)
+        super().handle_events()
 
 
 class AssistantActionDisplayer:

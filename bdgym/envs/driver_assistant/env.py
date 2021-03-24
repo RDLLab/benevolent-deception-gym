@@ -111,8 +111,8 @@ class DriverAssistantEnv(HighwayEnv):
 
     """
 
-    RIGHT_LANE_REWARD: float = 0.2
-    HIGH_SPEED_REWARD: float = 0.8
+    RIGHT_LANE_REWARD: float = 0.25
+    HIGH_SPEED_REWARD: float = 1.0
 
     SPEED_UPPER_LIMIT = GuidedIDMDriverPolicy.MAX_SPEED
     ACC_UPPER_LIMIT = 15.0
@@ -221,10 +221,7 @@ class DriverAssistantEnv(HighwayEnv):
 
     def step(self, action: Action) -> Tuple[Observation, float, bool, dict]:
         if self.next_agent == self.ASSISTANT_IDX:
-            if self.config["manual_control"]:
-                self.action_type.assistant_act(None)
-            else:
-                self.action_type.assistant_act(action)
+            self.action_type.assistant_act(action)
             self._track_deception()
             obs = self.observation_type.observe_driver()
         else:
