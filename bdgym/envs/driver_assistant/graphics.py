@@ -65,7 +65,7 @@ class DriverAssistantEnvViewer(EnvViewer):
         if self.save_images and self.directory:
             frame_num_str = "0"*(6-len(str(self.frame))) + str(self.frame)
             pg.image.save(
-                self.sim_surface,
+                self.screen,
                 osp.join(self.directory, f"frame_{frame_num_str}.png")
             )
             self.frame += 1
@@ -113,7 +113,7 @@ class AssistantActionDisplayer:
 
         # Display for the current Assistant action
         self.assistant_action = DashboardDisplay(
-            "Assistant Action (Driver observation & action recommendation)",
+            "Assistant Action",
             self.surface,
             width=self.width,
             height=self.height // 3,

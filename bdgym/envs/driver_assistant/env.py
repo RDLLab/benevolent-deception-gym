@@ -111,11 +111,12 @@ class DriverAssistantEnv(HighwayEnv):
 
     """
 
-    RIGHT_LANE_REWARD: float = 0.25
+    RIGHT_LANE_REWARD: float = 0.1
     HIGH_SPEED_REWARD: float = 1.0
 
     SPEED_UPPER_LIMIT = GuidedIDMDriverPolicy.MAX_SPEED
     ACC_UPPER_LIMIT = 15.0
+    MIN_REWARD_SPEED = 15.0
 
     OTHER_VEHICLE_OBS_NOISE = 0.0    # [m]
 
@@ -210,7 +211,7 @@ class DriverAssistantEnv(HighwayEnv):
             "duration": duration,
             "vehicles_density": 1,
             "vehicles_count": 50,    # Default = 50
-            "reward_speed_range": [0, max_speed],
+            "reward_speed_range": [self.MIN_REWARD_SPEED, max_speed],
             "collision_reward": -1,
             "offroad_terminal": True,
             "action_display": True,
