@@ -11,6 +11,11 @@ EXPLANATION_FIG_PATH = KEYBINDING_FIG_PATH = osp.join(
     "exercise_assistant_explanation.png"
 )
 
+INFO_FIG_PATH = KEYBINDING_FIG_PATH = osp.join(
+    osp.dirname(osp.abspath(__file__)),
+    "exercise_assistant_info.png"
+)
+
 
 def display_keybindings():
     """Display keybinding figure in seperate window """
@@ -21,4 +26,10 @@ def display_keybindings():
 def display_explanation():
     """Display keybinding figure in seperate window """
     img = Image.open(EXPLANATION_FIG_PATH)
+    img.show()
+
+
+def display_info():
+    """Display keybinding figure in seperate window """
+    img = Image.open(INFO_FIG_PATH)
     img.show()

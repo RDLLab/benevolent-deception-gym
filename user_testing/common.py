@@ -6,6 +6,8 @@ import uuid
 import datetime
 from typing import List, Union, Tuple, NamedTuple, Dict
 
+import numpy as np
+
 BASE_RESULTS_DIR = osp.join(osp.dirname(osp.abspath(__file__)), "results")
 
 if not osp.exists(BASE_RESULTS_DIR):

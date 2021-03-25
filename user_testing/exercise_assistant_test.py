@@ -21,9 +21,8 @@ import gym
 import numpy as np
 
 import bdgym    # noqa: F401 pylint: disable=unused-import
+from bdgym.envs.exercise_assistant.resources import display_info
 from bdgym.envs.exercise_assistant.policy import ManualDiscreteAssistantPolicy
-from bdgym.envs.exercise_assistant.resources import \
-    display_keybindings, display_explanation
 
 import common
 
@@ -33,11 +32,13 @@ TEST_NAME = "exercise_assistant_test"
 PRACTICE_PERIOD = 10    # In Minutes
 PRACTICE_PERIOD_SEC = PRACTICE_PERIOD * 60
 
+ALWAYS_SHOW_INFO = True
+
 # Map from test env name to number of evaluation episodes
 TEST_ENVS = {
-    "ExerciseAssistantOA-v0": 3,
-    "ExerciseAssistantIA-v0": 3,
-    # "ExerciseAssistantHA-v0": 10
+    "ExerciseAssistantOA-v0": 5,
+    "ExerciseAssistantIA-v0": 5,
+    "ExerciseAssistantHA-v0": 10
 }
 
 # Unique user ID
@@ -126,22 +127,24 @@ def run_episode(env_name: str, ep_num: int) -> EvalEpResult:
 
 def view_info():
     """View environment information """
-    answer = input(
-        "Would you like to view the explanation for the environment [y]/N? "
-    )
-    if answer.lower() != "n":
-        display_explanation()
+    if ALWAYS_SHOW_INFO:
+        display_info()
+        return
 
     answer = input(
-        "Would you like to view the keybindings for the environment [y]/N? "
+        "Would you like to view the info for the environment [y]/N? "
     )
     if answer.lower() != "n":
-        display_keybindings()
+        display_info()
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("name", type=str, help="Name of tester")
+    args = parser.parse_args()
     common.run_user_test(
-        TEST_NAME,
+        f"{TEST_NAME}_{args.name}",
         TEST_ENVS,
         PRACTICE_PERIOD,
         run_episode,
