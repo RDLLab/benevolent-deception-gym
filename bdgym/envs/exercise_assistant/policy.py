@@ -79,7 +79,8 @@ class WeightedAthletePolicy(AthletePolicy):
        percieved energy and the assistants communicated energy, weighted by the
        perception influence parameter
     2. the athletes action choice is then to perform a repetition if the
-       observed energy >= the threshold parameter
+       observed energy >= the threshold parameter with extra weighting for that
+       choice based on how far above/below the threshold the observed energy is
     3. Finally, the action performed is based the weighted sum of the athletes
        action choice and the assistant recommendation, again weighted by the
        independence parameter. If the this weighted sum >= 0.5 then athlete
@@ -121,18 +122,30 @@ class WeightedAthletePolicy(AthletePolicy):
             (1-self.perception_influence)*obs[0]
             + self.perception_influence*obs[2]
         )
+
         if energy_obs >= self.threshold:
-            athlete_choice = AthleteAction.PERFORM_REP
+            athlete_choice = float(AthleteAction.PERFORM_REP)
+            # weight choice by how far above threshold energy obs is
+            athlete_choice -= (energy_obs - self.threshold)
         else:
-            athlete_choice = AthleteAction.END_SET
+            athlete_choice = float(AthleteAction.END_SET)
+            # weight choice by how far below threshold energy obs is
+            athlete_choice += (self.threshold - energy_obs)
         assistant_choice = obs[3]
+
         action_prob = (
-            self.independence*int(athlete_choice)
+            self.independence*athlete_choice
             + (1-self.independence)*assistant_choice
         )
         if action_prob >= 0.5:
             return AthleteAction.END_SET
         return AthleteAction.PERFORM_REP
+
+    def display_params(self):
+        """Print param values to stdout """
+        print(f"threshold={self.threshold:.4f}")
+        print(f"perception_influence={self.perception_influence:.4f}")
+        print(f"independence={self.independence:.4f}")
 
 
 class RandomWeightedAthletePolicy(WeightedAthletePolicy):
@@ -143,15 +156,17 @@ class RandomWeightedAthletePolicy(WeightedAthletePolicy):
     sampled at random from independent normal distributions.
     """
 
+    MIN_THRESHOLD = 0.05
+
     def __init__(self,
-                 threshold_mean: float = 0.15,
+                 threshold_mean: float = 0.25,
                  threshold_std: float = 0.1,
                  perception_influence_mean: float = 0.5,
                  perception_influence_std: float = 0.25,
                  independence_mean: float = 0.5,
                  independence_std: float = 0.25):
         self.threshold_dist = utils.get_truncated_normal(
-            threshold_mean, threshold_std, 0.0, 1.0
+            threshold_mean, threshold_std, self.MIN_THRESHOLD, 1.0
         )
         self.perception_influence_dist = utils.get_truncated_normal(
             perception_influence_mean, perception_influence_std, 0.0, 1.0
