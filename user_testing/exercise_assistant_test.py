@@ -143,6 +143,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("name", type=str, help="Name of tester")
     args = parser.parse_args()
+    UUID = args.name
     common.run_user_test(
         f"{TEST_NAME}_{args.name}",
         TEST_ENVS,

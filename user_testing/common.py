@@ -52,7 +52,7 @@ def write_results_to_file(results: Union[List[NamedTuple], NamedTuple],
 def create_subdir(subdir_name: str) -> str:
     """Create a new subdirectory with timestamp appended to name """
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    subdir_name = f"{subdir_name}_{timestamp}.tsv"
+    subdir_name = f"{subdir_name}_{timestamp}"
     full_dirname = osp.join(BASE_RESULTS_DIR, subdir_name)
 
     if not osp.exists(full_dirname):
@@ -154,7 +154,7 @@ def run_env_user_test(env_name: str,
     )
     input("Press any ENTER to begin practice period.")
 
-    practice_results_file = osp.join(results_dir, f"{env_name}_practice")
+    practice_results_file = osp.join(results_dir, f"{env_name}_practice.tsv")
     practice_results = run_env_practice(
         env_name, practice_period, practice_results_file, run_episode_fn
     )
@@ -162,7 +162,7 @@ def run_env_user_test(env_name: str,
     print(LINE_BREAK)
     input("Practice period complete. Press ENTER to begin evaluation.")
 
-    eval_results_file = osp.join(results_dir, f"{env_name}_eval")
+    eval_results_file = osp.join(results_dir, f"{env_name}_eval.tsv")
     eval_results = run_env_eval(
         env_name, eval_episodes, eval_results_file, run_episode_fn
     )
