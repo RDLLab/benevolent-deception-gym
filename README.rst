@@ -31,6 +31,17 @@ Then next you will need to install via pip::
   $ pip install -e .
 
 
+Demo
+~~~~
+
+You can run a keyboard agent running the following command from the repo base directory::
+
+  $ python demo/keyboard_agent.py ExerciseAssistantOA-v0
+
+
+Substitute `ExerciseAssistantOA-v0` for any available benevolent-deception-gym environment.
+
+
 Documentation
 ~~~~~~~~~~~~~
 
@@ -49,14 +60,20 @@ This should install the documentation dependencies, namely `Sphinx <https://www.
 This should build all the documentation using `Sphinx`. Once the build is complete the docs can be accessed by opening ``benevolent-deception-gym/docs/build/html/index.html`` in your browser.
 
 
+Acknowledgements
+~~~~~~~~~~~~~~~~
+
+This initiative was funded by the Department of Defence and the Office of National Intelligence under the AI for Decision Making Program, delivered in partnership with the NSW Defence Innovation Network.
+
+
 Authors
--------
+~~~~~~~
 
 **Jonathon Schwartz** - Jonathon.schwartz@anu.edu.au
 
 
 License
--------
+~~~~~~~
 
 `MIT`_ © 2020, Jonathon Schwartz
 

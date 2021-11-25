@@ -1,6 +1,6 @@
 """Key board agent for the Benevolent Deception Gym """
 import time
-from typing import Tuple
+from typing import Tuple, Optional
 
 import gym
 import numpy as np
@@ -76,17 +76,22 @@ def run_exercise_assistant(env_name: str) -> Tuple[float, int, bool, float]:
     return total_return, steps, env.athlete_overexerted(), deception_mean
 
 
-def run_driver_assistant(env_name: str) -> Tuple[float, int, bool, float]:
+def run_driver_assistant(env_name: str,
+                         seed: Optional[int] = None
+                         ) -> Tuple[float, int, bool, float]:
     """Run Keyboard agent on the Exercise Assistant Environment.
 
     Parameters
     ----------
     env_name : str
         the name of Exercise-Assistant Env to run
+    seed : int, optional
+        random seed (default=None)
     """
     env = gym.make(env_name)
     env.config["manual_control"] = True
 
+    env.seed(seed)
     env.reset()
     env.render('human')
 
@@ -125,6 +130,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("env_name", type=str,
                         help="Name of BDGym environment to run")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="RNG Seed (default=None)")
     args = parser.parse_args()
 
     assert args.env_name in bdgym.envs.BDGYM_ENVS, \
@@ -134,4 +141,4 @@ if __name__ == "__main__":
     if args.env_name in bdgym.envs.ALL_EXERCISE_ASSISTANT_GYM_ENVS:
         run_exercise_assistant(args.env_name)
     elif args.env_name in bdgym.envs.ALL_DRIVER_ASSISTANT_GYM_ENVS:
-        run_driver_assistant(args.env_name)
+        run_driver_assistant(args.env_name, args.seed)
