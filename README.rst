@@ -1,7 +1,11 @@
 Benevolent Deception Gym
 ========================
 
+|docs|
+
 Multiagent Open AI gym environments that incoporate benevolent deception.
+
+`Reference Docs <https://benevolent-deception-gym.readthedocs.io/en/latest/index.html>`
 
 Environments
 ~~~~~~~~~~~~
@@ -39,25 +43,7 @@ You can run a keyboard agent running the following command from the repo base di
   $ python demo/keyboard_agent.py ExerciseAssistantOA-v0
 
 
-Substitute `ExerciseAssistantOA-v0` for any available benevolent-deception-gym environment.
-
-
-Documentation
-~~~~~~~~~~~~~
-
-Before it can be viewed the documentation must first be built. Firstly, if not already done, make sure documentation dependencies are installed::
-
-  $ cd beneveolent-deception-gym
-  $ pip install -e .[docs]
-
-
-This should install the documentation dependencies, namely `Sphinx <https://www.sphinx-doc.org>`_. Once dependencies are installed the documentation can be built by running the following::
-
-  $ cd docs
-  $ make html
-
-
-This should build all the documentation using `Sphinx`. Once the build is complete the docs can be accessed by opening ``benevolent-deception-gym/docs/build/html/index.html`` in your browser.
+Substitute `ExerciseAssistantOA-v0` for any available benevolent-deception-gym environment. The docs contain a list of `Exercise Assistant <https://benevolent-deception-gym.readthedocs.io/en/latest/environments/exercise_assistant.html#environment-versions>` and `Driver Assistant <https://benevolent-deception-gym.readthedocs.io/en/latest/environments/driver_assistant.html#environment-versions>` versionsthat are available.
 
 
 Acknowledgements
@@ -78,3 +64,8 @@ License
 `MIT`_ © 2020, Jonathon Schwartz
 
 .. _MIT: LICENSE
+
+.. |docs| image:: https://benevolent-deception-gym.readthedocs.io/en/latest/?badge=latest
+    :target: https://benevolent-deception-gym.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+    :scale: 100%
