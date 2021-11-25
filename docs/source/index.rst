@@ -17,7 +17,6 @@ The Docs
 
    tutorials/index
    environments/index
-   reference/index
    explanations/index
    community/index
    bibliography/index
