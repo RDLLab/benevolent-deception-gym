@@ -65,7 +65,7 @@ License
 
 .. _MIT: LICENSE
 
-.. |docs| image:: https://readthedocs.org/projects/benevolent-deception-gym/latest/badge/?version=latest
+.. |docs| image:: https://readthedocs.org/projects/benevolent-deception-gym/badge/?version=latest
     :target: https://benevolent-deception-gym.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
     :scale: 100%
