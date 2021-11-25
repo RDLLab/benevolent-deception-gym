@@ -5,7 +5,7 @@ Benevolent Deception Gym
 
 Multiagent Open AI gym environments that incoporate benevolent deception.
 
-`Reference Docs <https://benevolent-deception-gym.readthedocs.io/en/latest/index.html>`
+`Reference Docs <https://benevolent-deception-gym.readthedocs.io/en/latest/index.html>`_
 
 Environments
 ~~~~~~~~~~~~
@@ -43,7 +43,7 @@ You can run a keyboard agent running the following command from the repo base di
   $ python demo/keyboard_agent.py ExerciseAssistantOA-v0
 
 
-Substitute `ExerciseAssistantOA-v0` for any available benevolent-deception-gym environment. The docs contain a list of `Exercise Assistant <https://benevolent-deception-gym.readthedocs.io/en/latest/environments/exercise_assistant.html#environment-versions>` and `Driver Assistant <https://benevolent-deception-gym.readthedocs.io/en/latest/environments/driver_assistant.html#environment-versions>` versionsthat are available.
+Substitute `ExerciseAssistantOA-v0` for any available benevolent-deception-gym environment. The docs contain a list of `Exercise Assistant <https://benevolent-deception-gym.readthedocs.io/en/latest/environments/exercise_assistant.html#environment-versions>`_ and `Driver Assistant <https://benevolent-deception-gym.readthedocs.io/en/latest/environments/driver_assistant.html#environment-versions>`_ versionsthat are available.
 
 
 Acknowledgements
@@ -65,7 +65,7 @@ License
 
 .. _MIT: LICENSE
 
-.. |docs| image:: https://benevolent-deception-gym.readthedocs.io/en/latest/?badge=latest
+.. |docs| image:: https://readthedocs.org/projects/benevolent-deception-gym/latest/badge/?version=latest
     :target: https://benevolent-deception-gym.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
     :scale: 100%
